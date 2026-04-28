@@ -23,13 +23,6 @@ import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
 import io.github.kotlinmania.starlarkmap.StarlarkHashValue
 
-internal typealias IntoIter<K, V> = io.github.kotlinmania.starlarkmap.vecmap.iter.IntoIter<K, V>
-internal typealias IntoIterHashed<K, V> = io.github.kotlinmania.starlarkmap.vecmap.iter.IntoIterHashed<K, V>
-internal typealias Iter<K, V> = io.github.kotlinmania.starlarkmap.vecmap.iter.Iter<K, V>
-internal typealias IterHashed<K, V> = io.github.kotlinmania.starlarkmap.vecmap.iter.IterHashed<K, V>
-internal typealias Keys<K, V> = io.github.kotlinmania.starlarkmap.vecmap.iter.Keys<K, V>
-internal typealias Values<K, V> = io.github.kotlinmania.starlarkmap.vecmap.iter.Values<K, V>
-
 /**
  * Vec-backed map implementation used by [io.github.kotlinmania.starlarkmap.smallmap.SmallMap].
  *
