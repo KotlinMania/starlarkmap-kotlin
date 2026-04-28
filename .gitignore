@@ -7,3 +7,13 @@ local.properties
 .DS_Store
 kotlin-js-store/
 .kotlin/
+
+# ast_distance build artifacts (binary committed; cmake build dir regenerated)
+tools/ast_distance/build/
+
+# generated reports
+NEXT_ACTIONS.md
+high_priority_ports.md
+port_lint_proposed_changes.md
+port_status_report.md
+tools/ast_distance/.cache/
