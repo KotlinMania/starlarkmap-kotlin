@@ -1,4 +1,4 @@
-// port-lint: source src/smallMap/iter.rs
+// port-lint: source small_map/iter.rs
 package io.github.kotlinmania.starlarkmap.smallmap.iter
 
 /*

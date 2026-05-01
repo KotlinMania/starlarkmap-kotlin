@@ -1,4 +1,4 @@
-// port-lint: source src/hasher.rs
+// port-lint: source hasher.rs
 package io.github.kotlinmania.starlarkmap
 
 /*

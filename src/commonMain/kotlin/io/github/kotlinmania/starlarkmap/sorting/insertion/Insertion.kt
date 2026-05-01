@@ -1,4 +1,4 @@
-// port-lint: source src/sorting/insertion.rs
+// port-lint: source sorting/insertion.rs
 package io.github.kotlinmania.starlarkmap.sorting.insertion
 
 /*

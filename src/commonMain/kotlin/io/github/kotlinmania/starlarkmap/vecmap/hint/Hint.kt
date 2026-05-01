@@ -1,4 +1,4 @@
-// port-lint: source src/vecMap/hint.rs
+// port-lint: source vec_map/hint.rs
 package io.github.kotlinmania.starlarkmap.vecmap.hint
 
 /*

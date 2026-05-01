@@ -1,4 +1,4 @@
-// port-lint: source src/vec2/iter.rs
+// port-lint: source vec2/iter.rs
 package io.github.kotlinmania.starlarkmap.vec2.iter
 
 /*

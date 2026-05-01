@@ -1,4 +1,4 @@
-// port-lint: source src/smallSet/iter.rs
+// port-lint: source small_set/iter.rs
 package io.github.kotlinmania.starlarkmap.smallset.iter
 
 /*
