@@ -1,4 +1,4 @@
-// port-lint: source src/vecMap.rs
+// port-lint: source vec_map.rs
 package io.github.kotlinmania.starlarkmap.vecmap
 
 /*
@@ -29,9 +29,9 @@ import io.github.kotlinmania.starlarkmap.StarlarkHashValue
  * deterministic iteration order and API behaviour with a straightforward linear search.
  */
 internal class VecMap<K, V> private constructor(
-    private val keys: ArrayList<K>,
-    private val values: ArrayList<V>,
-    private val hashes: ArrayList<StarlarkHashValue>,
+    internal val keys: ArrayList<K>,
+    internal val values: ArrayList<V>,
+    internal val hashes: ArrayList<StarlarkHashValue>,
 ) {
     companion object {
         fun <K, V> new(): VecMap<K, V> = VecMap(ArrayList(), ArrayList(), ArrayList())
@@ -74,6 +74,16 @@ internal class VecMap<K, V> private constructor(
         return Pair(k, v)
     }
 
+    fun getUnchecked(index: Int): Pair<Hashed<K>, V> {
+        require(index in keys.indices)
+        return Pair(Hashed.newUnchecked(hashes[index], keys[index]), values[index])
+    }
+
+    fun getUncheckedMut(index: Int): Pair<Hashed<K>, V> {
+        require(index in keys.indices)
+        return Pair(Hashed.newUnchecked(hashes[index], keys[index]), values[index])
+    }
+
     fun insertHashedUniqueUnchecked(key: Hashed<K>, value: V) {
         hashes.add(key.hash())
         keys.add(key.intoKey())
@@ -106,12 +116,72 @@ internal class VecMap<K, V> private constructor(
 
     fun values(): Sequence<V> = values.asSequence()
 
+    fun valuesMut(): Sequence<V> = values.asSequence()
+
     fun keys(): Sequence<K> = keys.asSequence()
+
+    fun intoIter(): Iterator<Pair<K, V>> = iter().iterator()
 
     fun iter(): Sequence<Pair<K, V>> =
         keys.indices.asSequence().map { i -> Pair(keys[i], values[i]) }
 
     fun iterHashed(): Sequence<Pair<Hashed<K>, V>> =
         keys.indices.asSequence().map { i -> Pair(Hashed.newUnchecked(hashes[i], keys[i]), values[i]) }
+
+    fun intoIterHashed(): Iterator<Pair<Hashed<K>, V>> = iterHashed().iterator()
+
+    fun iterMut(): Sequence<Pair<K, V>> = iter()
+
+    fun iterMutUnchecked(): Sequence<Pair<K, V>> = iter()
+
+    /** Equal if entries are equal in the iterator order. */
+    fun eqOrdered(other: VecMap<K, V>): Boolean {
+        return hashes == other.hashes && keys == other.keys && values == other.values
+    }
+
+    /** Hash entries in the iterator order. */
+    fun hashOrdered(): Int {
+        var result = 1
+        for (i in keys.indices) {
+            result = 31 * result + hashes[i].hashCode()
+            result = 31 * result + (values[i]?.hashCode() ?: 0)
+        }
+        return result
+    }
+
+    fun reverse() {
+        keys.reverse()
+        values.reverse()
+        hashes.reverse()
+    }
+
+    fun retain(f: (K, V) -> Boolean) {
+        var i = 0
+        while (i < keys.size) {
+            if (f(keys[i], values[i])) {
+                i += 1
+            } else {
+                remove(i)
+            }
+        }
+    }
 }
 
+internal fun <K : Comparable<K>, V> VecMap<K, V>.sortKeys() {
+    val order = keys.indices.sortedWith(compareBy { keys[it] })
+    val oldKeys = keys.toList()
+    val oldValues = values.toList()
+    val oldHashes = hashes.toList()
+    keys.clear()
+    values.clear()
+    hashes.clear()
+    for (i in order) {
+        keys.add(oldKeys[i])
+        values.add(oldValues[i])
+        hashes.add(oldHashes[i])
+    }
+}
+
+internal fun <K : Comparable<K>, V> VecMap<K, V>.isSortedByKey(): Boolean {
+    return keys.asSequence().zipWithNext().all { (left, right) -> left <= right }
+}
