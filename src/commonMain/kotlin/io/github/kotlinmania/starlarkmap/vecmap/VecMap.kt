@@ -36,6 +36,8 @@ internal class VecMap<K, V> private constructor(
     companion object {
         fun <K, V> new(): VecMap<K, V> = VecMap(ArrayList(), ArrayList(), ArrayList())
 
+        fun <K, V> default(): VecMap<K, V> = new()
+
         fun <K, V> withCapacity(n: Int): VecMap<K, V> =
             VecMap(ArrayList(n), ArrayList(n), ArrayList(n))
     }
