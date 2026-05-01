@@ -176,3 +176,13 @@ class SmallMap<K, V> internal constructor(
         return entries.removeAt(index).value
     }
 }
+
+private fun <K : Comparable<K>, V> SmallMap<K, V>.isSortedByKey(): Boolean {
+    return entries.asSequence().map { it.key.key() }.zipWithNext().all { (left, right) -> left <= right }
+}
+
+/** Sort entries by key. */
+fun <K : Comparable<K>, V> SmallMap<K, V>.sortKeys() {
+    if (isSortedByKey()) return
+    entries.sortWith(compareBy { it.key.key() })
+}
