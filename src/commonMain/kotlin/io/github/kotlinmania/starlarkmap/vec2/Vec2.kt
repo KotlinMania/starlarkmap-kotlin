@@ -19,6 +19,9 @@ package io.github.kotlinmania.starlarkmap.vec2
  * limitations under the License.
  */
 
+import io.github.kotlinmania.starlarkmap.sorting.insertion.insertionSort
+import io.github.kotlinmania.starlarkmap.sorting.insertion.sliceSwapShift
+
 /**
  * A `List<Pair<A, B>>`-like object which stores `A` and `B` separately.
  *
@@ -79,6 +82,85 @@ class Vec2<A, B> private constructor(
 
     fun bbb(): List<B> = b
 
+    /** Get the first element reference. */
+    fun first(): Pair<A, B>? = get(0)
+
+    /** Get the last element reference. */
+    fun last(): Pair<A, B>? {
+        if (a.isEmpty()) return null
+        return get(a.size - 1)
+    }
+
+    /** If capacity exceeds length, shrink capacity to length. */
+    fun shrinkToFit() {
+        a.trimToSize()
+        b.trimToSize()
+    }
+
+    /**
+     * Truncate the vector to the given length.
+     *
+     * If the vector is already shorter than the given length, do nothing.
+     */
+    fun truncate(len: Int) {
+        if (len >= a.size) return
+        while (a.size > len) {
+            a.removeAt(a.size - 1)
+            b.removeAt(b.size - 1)
+        }
+    }
+
+    /** Retains only the elements specified by the predicate. */
+    fun retain(f: (A, B) -> Boolean) {
+        var written = 0
+        var next = 0
+        while (next < a.size) {
+            val aa = a[next]
+            val bb = b[next]
+            if (f(aa, bb)) {
+                if (written != next) {
+                    a[written] = aa
+                    b[written] = bb
+                }
+                written += 1
+            }
+            next += 1
+        }
+        while (a.size > written) {
+            a.removeAt(a.size - 1)
+            b.removeAt(b.size - 1)
+        }
+    }
+
     fun iter(): Sequence<Pair<A, B>> = a.indices.asSequence().map { i -> Pair(a[i], b[i]) }
+
+    internal fun sortInsertionBy(compare: (Pair<A, B>, Pair<A, B>) -> Int) {
+        insertionSort(
+            this,
+            len(),
+            { vec, i, j -> compare(vec.get(i)!!, vec.get(j)!!) < 0 },
+            { vec, ai, bi ->
+                sliceSwapShift(vec.a, ai, bi)
+                sliceSwapShift(vec.b, ai, bi)
+            },
+        )
+    }
+
+    /** Sort the elements using given comparator. */
+    fun sortBy(compare: (Pair<A, B>, Pair<A, B>) -> Int) {
+        // Constant from rust stdlib.
+        val MAX_INSERTION = 20
+        if (len() <= MAX_INSERTION) {
+            sortInsertionBy(compare)
+            return
+        }
+
+        val entries: MutableList<Pair<A, B>> = iter().toMutableList()
+        entries.sortWith(Comparator { x, y -> compare(x, y) })
+        clear()
+        for ((aa, bb) in entries) {
+            push(aa, bb)
+        }
+    }
 }
 
