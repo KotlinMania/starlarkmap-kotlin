@@ -7,7 +7,7 @@ package io.github.kotlinmania.starlarkmap
  * Copyright (c) 2025 Sydney Renee, The Solace Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not import this file except in compliance with the License.
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     https://www.apache.org/licenses/LICENSE-2.0
@@ -22,9 +22,7 @@ package io.github.kotlinmania.starlarkmap
 /**
  * A key and its hash.
  *
- * Note: in Rust, `Hash` for `Hashed<K>` hashes only the hash field (not the key).
- * Kotlin uses [hashCode] for hashed collections, so we mirror that behaviour by
- * hashing only [hash].
+ * [hashCode] hashes only the hash field, not the key.
  */
 class Hashed<out K> internal constructor(
     internal val hash: StarlarkHashValue,
@@ -53,6 +51,11 @@ class Hashed<out K> internal constructor(
     fun key(): K = key
 
     /**
+     * Get the underlying key, as mutable.
+     */
+    fun keyMut(): K = key
+
+    /**
      * Get the underlying key taking ownership.
      */
     fun intoKey(): K = key
@@ -63,20 +66,83 @@ class Hashed<out K> internal constructor(
     fun hash(): StarlarkHashValue = hash
 
     /**
-     * Convert `Hashed<K>` to `Hashed<&K>` in Rust. Kotlin references are already by reference,
-     * so this returns [this].
+     * Hash only the hash field, not the key.
+     */
+    fun hash(state: StarlarkHasher) {
+        state.writeU32(hash.get())
+    }
+
+    /**
+     * Strong hash this value using the key, not the weak hash.
+     */
+    fun strongHash(state: StarlarkHasher) {
+        val value = key
+        when (value) {
+            is StarlarkStrongHashable -> value.writeStrongHash(state)
+            is StarlarkHashable -> value.writeHash(state)
+            null -> state.writeU8(0u)
+            is Boolean -> state.writeU8(if (value) 1u else 0u)
+            is Int -> state.writeU32(value)
+            is UInt -> state.writeU32(value)
+            is Long -> state.writeU64(value.toULong())
+            is ULong -> state.writeU64(value)
+            is ByteArray -> state.write(value)
+            is String -> state.write(value.encodeToByteArray())
+            else -> state.writeU32(value.hashCode())
+        }
+    }
+
+    /**
+     * Get the underlying key.
+     */
+    fun deref(): K = key
+
+    /**
+     * Format the underlying key.
+     */
+    fun fmt(): String = key.toString()
+
+    /**
+     * Compare the underlying key if both keys are comparable.
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun partialCmp(other: Hashed<@UnsafeVariance K>): Int? {
+        val comparable = key as? Comparable<Any?> ?: return null
+        return comparable.compareTo(other.key)
+    }
+
+    /**
+     * Compare the underlying key.
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun cmp(other: Hashed<@UnsafeVariance K>): Int {
+        val comparable = key as Comparable<Any?>
+        return comparable.compareTo(other.key)
+    }
+
+    /**
+     * Convert this hash/key pair to a borrowed reference. Kotlin references are already
+     * references, so this returns [this].
      */
     fun asRef(): Hashed<K> = this
 
     /**
-     * Make `Hashed<K>` from `Hashed<&K>` in Rust when `K: Copy`.
+     * Make an owned hash/key pair from a borrowed reference. Kotlin values are already
+     * owned by the runtime, so this returns [this].
+     */
+    fun owned(): Hashed<K> = this
+
+    /**
+     * Make an owned hash/key pair from a copied borrowed reference. Kotlin values are
+     * already owned by the runtime, so this returns [this].
      *
      * Kotlin references are already values/references, so this returns [this].
      */
     fun copied(): Hashed<K> = this
 
     /**
-     * Make `Hashed<K>` from `Hashed<&K>` in Rust when `K: Clone`.
+     * Make an owned hash/key pair from a cloned borrowed reference. Kotlin values are
+     * already owned by the runtime, so this returns [this].
      *
      * Kotlin references are already values/references, so this returns [this].
      */
@@ -96,4 +162,11 @@ class Hashed<out K> internal constructor(
     override fun toString(): String {
         return key.toString()
     }
+}
+
+/**
+ * Kotlin equivalent for values that provide a stable strong hash.
+ */
+fun interface StarlarkStrongHashable {
+    fun writeStrongHash(hasher: StarlarkHasher)
 }
