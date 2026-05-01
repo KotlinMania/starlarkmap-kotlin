@@ -81,10 +81,14 @@ kotlin {
         nodejs()
     }
 
-    androidLibrary {
+    android {
         namespace = "io.github.kotlinmania.starlarkmap"
         compileSdk = 34
         minSdk = 24
+        withHostTestBuilder {}.configure {}
+        withDeviceTestBuilder {
+            sourceSetTreeName = "test"
+        }
     }
 
     sourceSets {
