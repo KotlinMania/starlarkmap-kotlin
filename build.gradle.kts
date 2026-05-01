@@ -106,7 +106,13 @@ kotlin {
 
 mavenPublishing {
     publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
-    signAllPublications()
+    val signingConfigured =
+        providers.gradleProperty("signingInMemoryKey").isPresent ||
+            providers.gradleProperty("signing.keyId").isPresent ||
+            providers.environmentVariable("SIGNING_KEY").isPresent
+    if (signingConfigured) {
+        signAllPublications()
+    }
 
     coordinates(group.toString(), "starlarkmap", version.toString())
 
@@ -114,7 +120,7 @@ mavenPublishing {
         name.set("starlarkmap")
         description.set("Kotlin Multiplatform port of facebook/starlark-rust's starlark_map crate - Map implementations with starlark-specific optimizations")
         inceptionYear.set("2026")
-        url.set("https://github.com/KotlinMania/starlarkmap-kotlin")
+        url.set("https://github.com/sydneyrenee/starlarkmap-kotlin")
 
         licenses {
             license {
@@ -134,9 +140,9 @@ mavenPublishing {
         }
 
         scm {
-            url.set("https://github.com/KotlinMania/starlarkmap-kotlin")
-            connection.set("scm:git:git://github.com/KotlinMania/starlarkmap-kotlin.git")
-            developerConnection.set("scm:git:ssh://github.com/KotlinMania/starlarkmap-kotlin.git")
+            url.set("https://github.com/sydneyrenee/starlarkmap-kotlin")
+            connection.set("scm:git:git://github.com/sydneyrenee/starlarkmap-kotlin.git")
+            developerConnection.set("scm:git:ssh://github.com/sydneyrenee/starlarkmap-kotlin.git")
         }
     }
 }
