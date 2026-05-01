@@ -26,5 +26,4 @@ package io.github.kotlinmania.starlarkmap.vecmap.hint
  * this is a no-op identity function.
  *
  */
-@Suppress("NOTHING_TO_INLINE")
-internal inline fun likely(x: Boolean): Boolean = x
+internal fun likely(x: Boolean): Boolean = x
