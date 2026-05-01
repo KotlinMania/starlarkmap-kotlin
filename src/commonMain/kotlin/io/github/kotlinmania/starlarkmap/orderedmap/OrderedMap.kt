@@ -22,6 +22,7 @@ package io.github.kotlinmania.starlarkmap.orderedmap
 import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
 import io.github.kotlinmania.starlarkmap.smallmap.SmallMap
+import io.github.kotlinmania.starlarkmap.smallmap.sortKeys
 
 /**
  * Wrapper for [SmallMap] which considers map equal if iteration order is equal.
@@ -177,7 +178,7 @@ class OrderedMap<K, V> internal constructor(
  * Sort the map by keys.
  */
 fun <K : Comparable<K>, V> OrderedMap<K, V>.sortKeys() {
-    inner.entries.sortWith(compareBy { it.key.key() })
+    inner.sortKeys()
 }
 
 /**
