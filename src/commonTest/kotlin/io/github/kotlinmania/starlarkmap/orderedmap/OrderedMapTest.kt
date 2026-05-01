@@ -19,6 +19,7 @@ package io.github.kotlinmania.starlarkmap.orderedmap
  * limitations under the License.
  */
 
+import io.github.kotlinmania.starlarkmap.smallmap.SmallMap
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -191,7 +192,7 @@ class OrderedMapTest {
 
     @Test
     fun testFromSmallMap() {
-        val small = starlarkmap.smallmap.SmallMap.new<String, Int>()
+        val small = SmallMap.new<String, Int>()
         small.insert("x", 10)
         val ordered = OrderedMap.from(small)
         assertEquals(1, ordered.len())
