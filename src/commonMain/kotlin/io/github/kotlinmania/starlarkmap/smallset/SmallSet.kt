@@ -120,7 +120,7 @@ class SmallSet<T> private constructor(
         }
     }
 
-    fun containsHashed(key: Hashed<T>): Boolean {
+    fun containsHashedByValue(key: Hashed<T>): Boolean {
         return entries.any { it == key }
     }
 
@@ -140,7 +140,7 @@ class SmallSet<T> private constructor(
     }
 
     fun insertHashed(value: Hashed<T>): Boolean {
-        if (containsHashed(value)) return false
+        if (containsHashedByValue(value)) return false
         entries.add(value)
         return true
     }
@@ -167,7 +167,7 @@ class SmallSet<T> private constructor(
         return entries.removeAt(index).key()
     }
 
-    fun shiftRemoveHashed(value: Hashed<T>): Boolean {
+    fun shiftRemoveHashedByValue(value: Hashed<T>): Boolean {
         val index = entries.indexOfFirst { it == value }
         if (index < 0) return false
         entries.removeAt(index)
@@ -229,4 +229,3 @@ class SmallSet<T> private constructor(
 
     operator fun iterator(): Iterator<T> = iter().iterator()
 }
-

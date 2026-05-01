@@ -156,7 +156,7 @@ class SmallMap<K, V> internal constructor(
         return insertHashed(Hashed.new(key), value)
     }
 
-    fun shiftRemoveHashed(key: Hashed<K>): V? {
+    fun shiftRemoveHashedByValue(key: Hashed<K>): V? {
         val index = getIndexOfHashedByValue(key) ?: return null
         return entries.removeAt(index).value
     }
