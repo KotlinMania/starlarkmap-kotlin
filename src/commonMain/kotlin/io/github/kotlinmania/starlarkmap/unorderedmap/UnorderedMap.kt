@@ -160,13 +160,6 @@ class UnorderedMap<K, V> internal constructor(
     fun valuesUnordered(): Sequence<V> = table.values.asSequence()
 
     /**
-     * Get the entries in the map, sorted by key.
-     */
-    @Suppress("UNCHECKED_CAST")
-    fun entriesSorted(): List<Pair<K, V>> =
-        entriesUnordered().sortedWith(compareBy { it.first as Comparable<Any> }).toList()
-
-    /**
      * Convert into a [HashMap].
      */
     fun intoHashMap(): HashMap<K, V> = HashMap(table)
@@ -214,6 +207,13 @@ class UnorderedMap<K, V> internal constructor(
     override fun toString(): String {
         return table.toString()
     }
+}
+
+/**
+ * Get the entries in the map, sorted by key.
+ */
+fun <K : Comparable<K>, V> UnorderedMap<K, V>.entriesSorted(): List<Pair<K, V>> {
+    return entriesUnordered().sortedWith(compareBy { it.first }).toList()
 }
 
 /**

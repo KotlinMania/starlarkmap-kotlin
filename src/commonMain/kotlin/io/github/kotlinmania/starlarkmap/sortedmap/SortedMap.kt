@@ -21,6 +21,7 @@ package io.github.kotlinmania.starlarkmap.sortedmap
 
 import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.orderedmap.OrderedMap
+import io.github.kotlinmania.starlarkmap.orderedmap.sortKeys
 import io.github.kotlinmania.starlarkmap.smallmap.SmallMap
 
 /**

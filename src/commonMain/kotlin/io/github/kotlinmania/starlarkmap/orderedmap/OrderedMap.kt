@@ -31,7 +31,7 @@ import io.github.kotlinmania.starlarkmap.smallmap.SmallMap
  */
 class OrderedMap<K, V> internal constructor(
     internal val inner: SmallMap<K, V>,
-) : Iterable<Pair<K, V>>, Comparable<OrderedMap<K, V>> {
+) : Iterable<Pair<K, V>> {
 
     companion object {
         /** Create a new empty map. */
@@ -124,14 +124,6 @@ class OrderedMap<K, V> internal constructor(
     fun clear() = inner.clear()
 
     /**
-     * Sort the map by keys.
-     */
-    @Suppress("UNCHECKED_CAST")
-    fun sortKeys() {
-        inner.entries.sortWith(compareBy { it.key.key() as Comparable<Any> })
-    }
-
-    /**
      * Extend the map with entries from an iterable.
      */
     fun extend(iter: Iterable<Pair<K, V>>) {
@@ -176,30 +168,37 @@ class OrderedMap<K, V> internal constructor(
         return result
     }
 
-    /**
-     * Compare two [OrderedMap]s lexicographically by their iteration order.
-     */
-    override fun compareTo(other: OrderedMap<K, V>): Int {
-        val thisIter = iter().iterator()
-        val otherIter = other.iter().iterator()
-        while (thisIter.hasNext() && otherIter.hasNext()) {
-            val (tk, tv) = thisIter.next()
-            val (ok, ov) = otherIter.next()
-            @Suppress("UNCHECKED_CAST")
-            val keyCmp = (tk as Comparable<K>).compareTo(ok)
-            if (keyCmp != 0) return keyCmp
-            @Suppress("UNCHECKED_CAST")
-            val valCmp = (tv as Comparable<V>).compareTo(ov)
-            if (valCmp != 0) return valCmp
-        }
-        return when {
-            thisIter.hasNext() -> 1
-            otherIter.hasNext() -> -1
-            else -> 0
-        }
-    }
-
     override fun toString(): String {
         return iter().joinToString(", ", "{", "}") { (k, v) -> "$k=$v" }
+    }
+}
+
+/**
+ * Sort the map by keys.
+ */
+fun <K : Comparable<K>, V> OrderedMap<K, V>.sortKeys() {
+    inner.entries.sortWith(compareBy { it.key.key() })
+}
+
+/**
+ * Compare two [OrderedMap]s lexicographically by their iteration order.
+ */
+operator fun <K : Comparable<K>, V : Comparable<V>> OrderedMap<K, V>.compareTo(
+    other: OrderedMap<K, V>,
+): Int {
+    val thisIter = iter().iterator()
+    val otherIter = other.iter().iterator()
+    while (thisIter.hasNext() && otherIter.hasNext()) {
+        val (tk, tv) = thisIter.next()
+        val (ok, ov) = otherIter.next()
+        val keyCmp = tk.compareTo(ok)
+        if (keyCmp != 0) return keyCmp
+        val valCmp = tv.compareTo(ov)
+        if (valCmp != 0) return valCmp
+    }
+    return when {
+        thisIter.hasNext() -> 1
+        otherIter.hasNext() -> -1
+        else -> 0
     }
 }

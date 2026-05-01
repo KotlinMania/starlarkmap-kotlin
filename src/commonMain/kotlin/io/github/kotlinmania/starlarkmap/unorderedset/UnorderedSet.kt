@@ -90,14 +90,7 @@ class UnorderedSet<T> internal constructor(
     fun rawEntryMut(): RawEntryBuilderMut<T> = RawEntryBuilderMut(map.rawEntryMut())
 
     /** Iterate over the values in the set (private). */
-    private fun iter(): Sequence<T> = map.keysUnordered()
-
-    /**
-     * Get the entries in the set, sorted.
-     */
-    @Suppress("UNCHECKED_CAST")
-    fun entriesSorted(): List<T> =
-        iter().sortedWith(compareBy { it as Comparable<Any> }).toList()
+    internal fun iter(): Sequence<T> = map.keysUnordered()
 
     /**
      * Unordered equality: two sets are equal iff they have the same elements,
@@ -112,6 +105,13 @@ class UnorderedSet<T> internal constructor(
     override fun hashCode(): Int = map.hashCode()
 
     override fun toString(): String = map.toString()
+}
+
+/**
+ * Get the entries in the set, sorted.
+ */
+fun <T : Comparable<T>> UnorderedSet<T>.entriesSorted(): List<T> {
+    return iter().sorted().toList()
 }
 
 /**
