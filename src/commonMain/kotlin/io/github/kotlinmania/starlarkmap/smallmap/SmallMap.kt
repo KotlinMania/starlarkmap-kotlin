@@ -29,12 +29,25 @@ import io.github.kotlinmania.starlarkmap.Hashed
  * keeps the same observable behaviour while using a simple insertion-ordered storage.
  */
 class SmallMap<K, V> internal constructor(
-    internal val entries: ArrayList<Entry<K, V>>,
+    internal val entries: ArrayList<Bucket<K, V>>,
 ) {
-    internal data class Entry<K, V>(
+    internal data class Bucket<K, V>(
         val key: Hashed<K>,
         var value: V,
     )
+
+    /** Get the entry (occupied or not) for a hashed key. */
+    fun entryHashed(key: Hashed<K>): Entry<K, V> {
+        val index = getIndexOfHashedByValue(key)
+        return if (index != null) {
+            Entry.Occupied(OccupiedEntry(this, index))
+        } else {
+            Entry.Vacant(VacantEntry(this, key))
+        }
+    }
+
+    /** Get the entry (occupied or not) for a key. */
+    fun entry(key: K): Entry<K, V> = entryHashed(Hashed.new(key))
 
     companion object {
         /**
@@ -162,7 +175,7 @@ class SmallMap<K, V> internal constructor(
     }
 
     fun insertHashedUniqueUnchecked(key: Hashed<K>, value: V) {
-        entries.add(Entry(key, value))
+        entries.add(Bucket(key, value))
     }
 
     fun insertHashed(key: Hashed<K>, value: V): V? {
@@ -172,7 +185,7 @@ class SmallMap<K, V> internal constructor(
             entries[index].value = value
             prev
         } else {
-            entries.add(Entry(key, value))
+            entries.add(Bucket(key, value))
             null
         }
     }
@@ -183,7 +196,7 @@ class SmallMap<K, V> internal constructor(
 
     fun insertUniqueUnchecked(key: K, value: V): Pair<K, V> {
         val hashed = Hashed.new(key)
-        entries.add(Entry(hashed, value))
+        entries.add(Bucket(hashed, value))
         val inserted = entries.last()
         return Pair(inserted.key.key(), inserted.value)
     }
@@ -306,6 +319,70 @@ private fun formatDebug(value: Any?): String = when (value) {
 
 private fun <K : Comparable<K>, V> SmallMap<K, V>.isSortedByKey(): Boolean {
     return entries.asSequence().map { it.key.key() }.zipWithNext().all { (left, right) -> left <= right }
+}
+
+/** Reference to the actual entry in the map. */
+class OccupiedEntry<K, V> internal constructor(
+    private val map: SmallMap<K, V>,
+    private val index: Int,
+) {
+    /** Key for this entry. */
+    fun key(): K = map.entries[index].key.key()
+
+    /** Value for this entry. */
+    fun get(): V = map.entries[index].value
+
+    /** Replace the value associated with the entry. */
+    fun set(value: V) {
+        map.entries[index].value = value
+    }
+}
+
+/** Reference to a vacant entry in the map. */
+class VacantEntry<K, V> internal constructor(
+    private val map: SmallMap<K, V>,
+    private val keyHashed: Hashed<K>,
+) {
+    /** Key for this entry. */
+    fun key(): K = keyHashed.key()
+
+    /** Insert the value into the entry, returning the inserted value. */
+    fun insert(value: V): V {
+        map.insertHashedUniqueUnchecked(keyHashed, value)
+        return value
+    }
+}
+
+/** Occupied or vacant entry. */
+sealed class Entry<K, V> {
+    /** Occupied entry. */
+    class Occupied<K, V>(val entry: OccupiedEntry<K, V>) : Entry<K, V>()
+
+    /** No entry for given key. */
+    class Vacant<K, V>(val entry: VacantEntry<K, V>) : Entry<K, V>()
+
+    /** Key for this entry. */
+    fun key(): K = when (this) {
+        is Occupied -> entry.key()
+        is Vacant -> entry.key()
+    }
+
+    /** Insert if vacant, returning the existing or inserted value. */
+    fun orInsert(default: V): V = orInsertWith { default }
+
+    /** Insert if vacant, returning the existing or inserted value. */
+    fun orInsertWith(default: () -> V): V = when (this) {
+        is Occupied -> entry.get()
+        is Vacant -> entry.insert(default())
+    }
+
+    /** Modify if present. Returns this entry. */
+    fun andModify(f: (V) -> V): Entry<K, V> {
+        if (this is Occupied) {
+            entry.set(f(entry.get()))
+        }
+        return this
+    }
 }
 
 /** Sort entries by key. */
