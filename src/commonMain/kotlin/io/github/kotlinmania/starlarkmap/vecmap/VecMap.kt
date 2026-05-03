@@ -23,6 +23,7 @@ import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
 import io.github.kotlinmania.starlarkmap.StarlarkHashValue
 import io.github.kotlinmania.starlarkmap.vec2.Vec2
+import io.github.kotlinmania.starlarkmap.vecmap.simd.findHashInArray
 
 internal class VecMap<K, V> private constructor(
     internal val buckets: Vec2<Pair<K, V>, StarlarkHashValue>,
@@ -52,8 +53,11 @@ internal class VecMap<K, V> private constructor(
     fun getIndexOfHashedRaw(hash: StarlarkHashValue, eq: (K) -> Boolean): Int? {
         val hashes = buckets.bbb()
         val pairs = buckets.aaa()
-        for (i in hashes.indices) {
-            if (hashes[i] == hash && eq(pairs[i].first)) return i
+        var i = 0
+        while (i < hashes.size) {
+            i = findHashInArray(hashes, hash, i) ?: return null
+            if (eq(pairs[i].first)) return i
+            i += 1
         }
         return null
     }
@@ -64,15 +68,13 @@ internal class VecMap<K, V> private constructor(
     }
 
     fun getIndex(index: Int): Pair<K, V>? {
-        val pair = buckets.aaa().getOrNull(index) ?: return null
+        val (pair, _hash) = buckets.get(index) ?: return null
         return pair
     }
 
     fun getUnchecked(index: Int): Pair<Hashed<K>, V> {
-        require(index in 0 until buckets.len())
-        val (k, v) = buckets.aaa()[index]
-        val h = buckets.bbb()[index]
-        return Pair(Hashed.newUnchecked(h, k), v)
+        val (pair, hash) = buckets.getUnchecked(index)
+        return Pair(Hashed.newUnchecked(hash, pair.first), pair.second)
     }
 
     fun getUncheckedMut(index: Int): Pair<Hashed<K>, V> = getUnchecked(index)
@@ -127,25 +129,34 @@ internal class VecMap<K, V> private constructor(
 
     fun iter(): Sequence<Pair<K, V>> = buckets.aaa().asSequence()
 
-    fun iterHashed(): Sequence<Pair<Hashed<K>, V>> {
-        val pairs = buckets.aaa()
-        val hashes = buckets.bbb()
-        return pairs.indices.asSequence().map { i ->
-            Pair(Hashed.newUnchecked(hashes[i], pairs[i].first), pairs[i].second)
-        }
+    fun iterHashed(): Sequence<Pair<Hashed<K>, V>> = buckets.iter().map { (pair, hash) ->
+        Pair(Hashed.newUnchecked(hash, pair.first), pair.second)
     }
 
-    fun intoIterHashed(): Iterator<Pair<Hashed<K>, V>> = iterHashed().iterator()
+    fun intoIterHashed(): Iterator<Pair<Hashed<K>, V>> = buckets.intoIter().asSequence().map { (pair, hash) ->
+        Pair(Hashed.newUnchecked(hash, pair.first), pair.second)
+    }.iterator()
 
-    fun iterMut(): Sequence<Pair<K, V>> = iter()
+    fun iterMut(): Sequence<Pair<K, V>> = buckets.aaaMut().asSequence()
 
-    fun iterMutUnchecked(): Sequence<Pair<K, V>> = iter()
+    fun iterMutUnchecked(): Sequence<Pair<K, V>> = buckets.aaaMut().asSequence()
 
     /** Equal if entries are equal in the iterator order. */
-    fun eqOrdered(other: VecMap<K, V>): Boolean = buckets == other.buckets
+    fun eqOrdered(other: VecMap<K, V>): Boolean {
+        // Compare hashes before keys/values: hash mismatch short-circuits faster than
+        // walking equal pairs. Mirrors vec_map.rs:264.
+        return buckets.bbb() == other.buckets.bbb() && buckets.aaa() == other.buckets.aaa()
+    }
 
     /** Hash entries in the iterator order. */
-    fun hashOrdered(): Int = buckets.hashCode()
+    fun hashOrdered(): Int {
+        var result = 1
+        for ((hashedKey, value) in iterHashed()) {
+            result = 31 * result + hashedKey.hashCode()
+            result = 31 * result + (value?.hashCode() ?: 0)
+        }
+        return result
+    }
 
     fun reverse() {
         buckets.aaaMut().reverse()
@@ -162,9 +173,6 @@ internal fun <K : Comparable<K>, V> VecMap<K, V>.sortKeys() {
 }
 
 internal fun <K : Comparable<K>, V> VecMap<K, V>.isSortedByKey(): Boolean {
-    val pairs = buckets.aaa()
-    for (i in 1 until pairs.size) {
-        if (pairs[i - 1].first > pairs[i].first) return false
-    }
-    return true
+    // Mirrors vec_map.rs:253 self.buckets.aaa().windows(2).all(|w| w[0].0 <= w[1].0)
+    return buckets.aaa().asSequence().windowed(2).all { (a, b) -> a.first <= b.first }
 }
