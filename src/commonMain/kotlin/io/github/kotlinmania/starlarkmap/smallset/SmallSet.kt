@@ -21,6 +21,7 @@ package io.github.kotlinmania.starlarkmap.smallset
 
 import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
+import io.github.kotlinmania.starlarkmap.smallmap.Entry
 import io.github.kotlinmania.starlarkmap.smallmap.SmallMap
 import io.github.kotlinmania.starlarkmap.smallmap.sortKeys
 
@@ -126,10 +127,9 @@ class SmallSet<T> internal constructor(
         insertHashedUniqueUnchecked(Hashed.new(value))
     }
 
-    fun insertHashed(value: Hashed<T>): Boolean {
-        if (inner.getIndexOfHashedByValue(value) != null) return false
-        inner.insertHashedUniqueUnchecked(value, Unit)
-        return true
+    fun insertHashed(value: Hashed<T>): Boolean = when (val e = inner.entryHashed(value)) {
+        is Entry.Vacant -> { e.entry.insert(Unit); true }
+        is Entry.Occupied -> false
     }
 
     fun insertHashedUniqueUnchecked(value: Hashed<T>) {
@@ -176,10 +176,14 @@ class SmallSet<T> internal constructor(
      * Return the resulting entry in the set.
      */
     fun getOrInsert(value: T): T {
-        val existing = get(value)
-        if (existing != null) return existing
-        inner.insertHashedUniqueUnchecked(Hashed.new(value), Unit)
-        return value
+        val hashed = Hashed.new(value)
+        return when (val e = inner.entryHashed(hashed)) {
+            is Entry.Occupied -> e.entry.key()
+            is Entry.Vacant -> {
+                e.entry.insert(Unit)
+                value
+            }
+        }
     }
 
     /**
@@ -188,8 +192,8 @@ class SmallSet<T> internal constructor(
      * Return the resulting entry in the set.
      */
     fun <Q> getOrInsertOwned(value: Q, toOwned: (Q) -> T): T where Q : Equivalent<T> {
-        val existing = get(value)
-        if (existing != null) return existing
+        val i = inner.getIndexOfHashed(Hashed.new(value))
+        if (i != null) return inner.entries.keyAt(i)
         val owned = toOwned(value)
         inner.insertHashedUniqueUnchecked(Hashed.new(owned), Unit)
         return owned
