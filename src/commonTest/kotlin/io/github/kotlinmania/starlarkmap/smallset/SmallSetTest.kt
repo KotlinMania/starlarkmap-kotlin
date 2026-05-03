@@ -148,7 +148,7 @@ class SmallSetTest {
     fun testDifference() {
         val a = SmallSet.fromIterator(listOf(1, 2, 3))
         val b = SmallSet.fromIterator(listOf(2, 4, 1))
-        val d = a.difference(b).toList()
+        val d = a.difference(b).asSequence().toList()
         assertEquals(listOf(3), d)
     }
 
@@ -156,7 +156,7 @@ class SmallSetTest {
     fun testUnion() {
         val a = SmallSet.fromIterator(listOf(1, 2, 3))
         val b = SmallSet.fromIterator(listOf(2, 4, 1))
-        val d = a.union(b).toList()
+        val d = a.union(b).asSequence().toList()
         assertEquals(listOf(1, 2, 3, 4), d)
     }
 

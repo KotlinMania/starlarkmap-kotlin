@@ -1,4 +1,4 @@
-// port-lint: source src/smallSet.rs
+// port-lint: source small_set.rs
 package io.github.kotlinmania.starlarkmap.smallset
 
 /*
@@ -182,15 +182,72 @@ class SmallSet<T> private constructor(
         return true
     }
 
+    /**
+     * Remove the element from the set if it is present.
+     *
+     * Time complexity of this operation is *O(N)* where *N* is the number of entries in the set.
+     */
+    fun shiftRemove(key: T): Boolean {
+        val index = getIndexOf(key) ?: return false
+        entries.removeAt(index)
+        return true
+    }
+
+    /**
+     * Remove the element by index. This is *O(N)* operation.
+     */
+    fun shiftRemoveIndexHashed(i: Int): Hashed<T>? {
+        if (i < 0 || i >= entries.size) return null
+        return entries.removeAt(i)
+    }
+
+    /**
+     * Remove the element by index. This is *O(N)* operation.
+     */
+    fun shiftRemoveIndex(i: Int): T? = shiftRemoveIndexHashed(i)?.intoKey()
+
+    /**
+     * Insert entry if it doesn't exist.
+     *
+     * Return the resulting entry in the set.
+     */
+    fun getOrInsert(value: T): T {
+        val existing = get(value)
+        if (existing != null) return existing
+        val hashed = Hashed.new(value)
+        entries.add(hashed)
+        return hashed.key()
+    }
+
+    /**
+     * Insert entry if it doesn't exist.
+     *
+     * Return the resulting entry in the set.
+     */
+    fun <Q> getOrInsertOwned(value: Q, toOwned: (Q) -> T): T where Q : Equivalent<T> {
+        val existing = get(value)
+        if (existing != null) return existing
+        val owned = toOwned(value)
+        val hashed = Hashed.new(owned)
+        entries.add(hashed)
+        return hashed.key()
+    }
+
+    /** Reserve capacity for at least [additional] more elements. No-op for [ArrayList]-backed storage. */
+    fun reserve(additional: Int) {
+        entries.ensureCapacity(entries.size + additional)
+    }
+
+    /** Current capacity of the set. [ArrayList] does not expose its capacity, so report [len]. */
+    fun capacity(): Int = entries.size
+
     /** Reverse the iteration order of the set. */
     fun reverse() {
         entries.reverse()
     }
 
     /** Iterator over elements of this set which are not in the other set. */
-    fun difference(other: SmallSet<T>): Sequence<T> {
-        return iter().filter { !other.contains(it) }
-    }
+    fun difference(other: SmallSet<T>): Difference<T> = Difference(iter().iterator(), this, other)
 
     /**
      * Iterator over union of two sets.
@@ -198,9 +255,7 @@ class SmallSet<T> private constructor(
      * Iteration order is: elements of this set followed by elements in the
      * other set not present in this set.
      */
-    fun union(other: SmallSet<T>): Sequence<T> {
-        return iter() + other.difference(this)
-    }
+    fun union(other: SmallSet<T>): Union<T> = Union(iter().iterator(), other.difference(this))
 
     /** Equal if entries are equal in iteration order. */
     fun eqOrdered(other: SmallSet<T>): Boolean {
@@ -222,6 +277,86 @@ class SmallSet<T> private constructor(
     }
 
     operator fun iterator(): Iterator<T> = iter().iterator()
+
+    /**
+     * Two sets are equal if they contain the same elements regardless of iteration order,
+     * mirroring the upstream `PartialEq` impl on [SmallMap].
+     */
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is SmallSet<*>) return false
+        if (entries.size != other.entries.size) return false
+        for (e in entries) {
+            if (e !in other.entries) return false
+        }
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var sum = 0
+        for (e in entries) {
+            sum += e.hashCode()
+        }
+        return sum
+    }
+
+    override fun toString(): String =
+        entries.asSequence().map { it.key().toString() }.joinToString(prefix = "{", postfix = "}", separator = ", ")
+}
+
+/** Iterator over the difference of two sets. */
+class Difference<T> internal constructor(
+    private val iter: Iterator<T>,
+    private val source: SmallSet<T>,
+    private val other: SmallSet<T>,
+) : Iterator<T> {
+    private var nextItem: T? = null
+    private var hasNextItem: Boolean = false
+    private var advanced: Int = 0
+
+    private fun advance() {
+        while (iter.hasNext()) {
+            val item = iter.next()
+            advanced += 1
+            if (!other.contains(item)) {
+                nextItem = item
+                hasNextItem = true
+                return
+            }
+        }
+    }
+
+    override fun hasNext(): Boolean {
+        if (!hasNextItem) advance()
+        return hasNextItem
+    }
+
+    override fun next(): T {
+        if (!hasNext()) throw NoSuchElementException()
+        val v = nextItem!!
+        nextItem = null
+        hasNextItem = false
+        return v
+    }
+
+    /** Lower and upper bound on remaining items. */
+    fun sizeHint(): Pair<Int, Int?> {
+        val remainingInner = source.len() - advanced + (if (hasNextItem) 1 else 0)
+        return Pair(
+            (remainingInner - other.len()).coerceAtLeast(0),
+            remainingInner,
+        )
+    }
+}
+
+/** Iterator over a union of two sets. */
+class Union<T> internal constructor(
+    private val first: Iterator<T>,
+    private val second: Difference<T>,
+) : Iterator<T> {
+    override fun hasNext(): Boolean = first.hasNext() || second.hasNext()
+
+    override fun next(): T = if (first.hasNext()) first.next() else second.next()
 }
 
 /** Sort entries. */

@@ -142,7 +142,7 @@ class OrderedSet<T> internal constructor(
     /**
      * Iterate over the union of two sets.
      */
-    fun union(other: OrderedSet<T>): Sequence<T> =
+    fun union(other: OrderedSet<T>): Iterator<T> =
         inner.union(other.inner)
 
     /**
