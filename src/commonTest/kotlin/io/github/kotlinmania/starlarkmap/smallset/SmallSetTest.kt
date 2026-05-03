@@ -90,6 +90,16 @@ class SmallSetTest {
     }
 
     @Test
+    fun smallSetMacros() {
+        val s = SmallSet.fromIterator(listOf(1, 4, 2))
+        val i = s.iterator()
+        assertEquals(1, i.next())
+        assertEquals(4, i.next())
+        assertEquals(2, i.next())
+        assertFalse(i.hasNext())
+    }
+
+    @Test
     fun smallSetInserts() {
         val s = SmallSet<Int>()
         assertTrue(s.insert(2))
@@ -165,6 +175,19 @@ class SmallSetTest {
         val a = SmallSet.fromIterator(listOf(1, 3, 2))
         a.sort()
         assertEquals(listOf(1, 2, 3), a.iter().toList())
+    }
+
+    @Test
+    fun testDifferenceSizeHint() {
+        val a = SmallSet.fromIterator(listOf(1, 2, 3))
+        val b = SmallSet.fromIterator(listOf(2))
+        val iter = a.difference(b)
+        assertEquals(Pair(2, 3), iter.sizeHint())
+        assertEquals(1, iter.next())
+        assertEquals(Pair(1, 2), iter.sizeHint())
+        assertEquals(3, iter.next())
+        assertEquals(Pair(0, 0), iter.sizeHint())
+        assertFalse(iter.hasNext())
     }
 }
 
