@@ -3,6 +3,8 @@
 
 package io.github.kotlinmania.starlarkmap.vecmap.simd
 
+import io.github.kotlinmania.starlarkmap.StarlarkHashValue
+
 /*
  * Copyright 2019 The Starlark in Rust Authors.
  * Copyright (c) Facebook, Inc. and its affiliates.
@@ -45,4 +47,21 @@ internal fun findHashInArrayWithoutSimd(array: UIntArray, hash: UInt): Int? {
  */
 internal fun findHashInArray(array: UIntArray, hash: UInt): Int? {
     return findHashInArrayWithoutSimd(array, hash)
+}
+
+/**
+ * Search a list of hashes from `fromIndex` for the first matching hash.
+ * Returns the absolute index, or null if no match.
+ */
+internal fun findHashInArray(
+    array: List<StarlarkHashValue>,
+    hash: StarlarkHashValue,
+    fromIndex: Int,
+): Int? {
+    var i = fromIndex
+    while (i < array.size) {
+        if (array[i] == hash) return i
+        i += 1
+    }
+    return null
 }
