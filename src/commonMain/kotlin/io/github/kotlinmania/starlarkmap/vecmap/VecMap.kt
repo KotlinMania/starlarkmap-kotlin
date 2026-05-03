@@ -81,6 +81,26 @@ internal class VecMap<K, V> private constructor(
         buckets.push(Pair(key.intoKey(), value), key.hash())
     }
 
+    /** Replace the value at `index`, keeping the existing key/hash. */
+    fun setValue(index: Int, value: V) {
+        val pairs = buckets.aaaMut()
+        val key = pairs[index].first
+        pairs[index] = Pair(key, value)
+    }
+
+    /** Read the value at `index` without bounds checking — caller must guarantee `index < len()`. */
+    fun valueAt(index: Int): V = buckets.aaa()[index].second
+
+    /** Read the key at `index` without bounds checking. */
+    fun keyAt(index: Int): K = buckets.aaa()[index].first
+
+    /** Read the [Hashed] key at `index` without bounds checking. */
+    fun hashedKeyAt(index: Int): Hashed<K> {
+        val (k, _) = buckets.aaa()[index]
+        val h = buckets.bbb()[index]
+        return Hashed.newUnchecked(h, k)
+    }
+
     fun <Q> removeHashedEntry(key: Hashed<Q>): Pair<K, V>? where Q : Equivalent<K> {
         val index = getIndexOfHashed(key) ?: return null
         val (pair, _) = buckets.remove(index)
