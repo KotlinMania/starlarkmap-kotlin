@@ -60,6 +60,11 @@ class SmallMap<K, V> internal constructor(
         fun <K, V> fromIter(iter: Iterable<Pair<K, V>>): SmallMap<K, V> = fromIterator(iter)
     }
 
+    override fun toString(): String =
+        entries.joinToString(prefix = "{", postfix = "}", separator = ", ") {
+            "${formatDebug(it.key.key())}: ${formatDebug(it.value)}"
+        }
+
     fun maybeDropIndex() {
         // No-op in this Kotlin implementation.
     }
@@ -290,6 +295,13 @@ class SmallMap<K, V> internal constructor(
             insert(key, value)
         }
     }
+}
+
+private fun formatDebug(value: Any?): String = when (value) {
+    null -> "null"
+    is String -> "\"$value\""
+    is Char -> "'$value'"
+    else -> value.toString()
 }
 
 private fun <K : Comparable<K>, V> SmallMap<K, V>.isSortedByKey(): Boolean {
