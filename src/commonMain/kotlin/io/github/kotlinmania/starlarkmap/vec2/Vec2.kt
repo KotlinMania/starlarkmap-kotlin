@@ -72,11 +72,8 @@ class Vec2<A, B> private constructor(
         return Pair(aa, bb)
     }
 
-    fun get(index: Int): Pair<A, B>? {
-        val aa = a.getOrNull(index) ?: return null
-        val bb = b.getOrNull(index) ?: return null
-        return Pair(aa, bb)
-    }
+    fun get(index: Int): Pair<A, B>? =
+        if (index in 0 until len()) getUnchecked(index) else null
 
     fun aaa(): List<A> = a
 
@@ -93,10 +90,7 @@ class Vec2<A, B> private constructor(
     fun first(): Pair<A, B>? = get(0)
 
     /** Get the last element reference. */
-    fun last(): Pair<A, B>? {
-        if (a.isEmpty()) return null
-        return get(a.size - 1)
-    }
+    fun last(): Pair<A, B>? = get(len() - 1)
 
     /** If capacity exceeds length, shrink capacity to length. */
     fun shrinkToFit() {
@@ -139,7 +133,7 @@ class Vec2<A, B> private constructor(
         }
     }
 
-    fun iter(): Sequence<Pair<A, B>> = a.indices.asSequence().map { i -> Pair(a[i], b[i]) }
+    fun iter(): Sequence<Pair<A, B>> = a.asSequence().zip(b.asSequence())
 
     /** Consuming iterator over (A, B) pairs. Mirrors Rust's `IntoIterator for Vec2`. */
     fun intoIter(): Iterator<Pair<A, B>> = iter().iterator()
