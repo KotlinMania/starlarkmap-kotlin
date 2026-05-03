@@ -80,7 +80,14 @@ class Vec2<A, B> private constructor(
 
     fun aaa(): List<A> = a
 
+    fun aaaMut(): MutableList<A> = a
+
     fun bbb(): List<B> = b
+
+    fun bbbMut(): MutableList<B> = b
+
+    /** Read entry at index without bounds checking — caller must ensure `index < len()`. */
+    fun getUnchecked(index: Int): Pair<A, B> = Pair(a[index], b[index])
 
     /** Get the first element reference. */
     fun first(): Pair<A, B>? = get(0)
@@ -134,6 +141,11 @@ class Vec2<A, B> private constructor(
 
     fun iter(): Sequence<Pair<A, B>> = a.indices.asSequence().map { i -> Pair(a[i], b[i]) }
 
+    /** Consuming iterator over (A, B) pairs. Mirrors Rust's `IntoIterator for Vec2`. */
+    fun intoIter(): Iterator<Pair<A, B>> = iter().iterator()
+
+    operator fun iterator(): Iterator<Pair<A, B>> = intoIter()
+
     internal fun sortInsertionBy(compare: (Pair<A, B>, Pair<A, B>) -> Int) {
         insertionSort(
             this,
@@ -145,6 +157,24 @@ class Vec2<A, B> private constructor(
             },
         )
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Vec2<*, *>) return false
+        return a == other.a && b == other.b
+    }
+
+    override fun hashCode(): Int {
+        var result = a.size
+        for (i in a.indices) {
+            result = 31 * result + (a[i]?.hashCode() ?: 0)
+            result = 31 * result + (b[i]?.hashCode() ?: 0)
+        }
+        return result
+    }
+
+    override fun toString(): String =
+        a.indices.joinToString(prefix = "[", postfix = "]", separator = ", ") { i -> "(${a[i]}, ${b[i]})" }
 
     /** Sort the elements using given comparator. */
     fun sortBy(compare: (Pair<A, B>, Pair<A, B>) -> Int) {
