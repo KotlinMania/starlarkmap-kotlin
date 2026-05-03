@@ -21,21 +21,15 @@ package io.github.kotlinmania.starlarkmap.smallmap
 
 import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
+import io.github.kotlinmania.starlarkmap.vecmap.VecMap
+import io.github.kotlinmania.starlarkmap.vecmap.sortKeys as vecMapSortKeys
 
 /**
  * A map with deterministic iteration order.
- *
- * Kotlin does not have an equivalent to `hashbrown::HashTable` in commonMain, so this port
- * keeps the same observable behaviour while using a simple insertion-ordered storage.
  */
 class SmallMap<K, V> internal constructor(
-    internal val entries: ArrayList<Bucket<K, V>>,
+    internal val entries: VecMap<K, V>,
 ) {
-    internal data class Bucket<K, V>(
-        val key: Hashed<K>,
-        var value: V,
-    )
-
     /** Get the entry (occupied or not) for a hashed key. */
     fun entryHashed(key: Hashed<K>): Entry<K, V> {
         val index = getIndexOfHashedByValue(key)
@@ -53,14 +47,14 @@ class SmallMap<K, V> internal constructor(
         /**
          * Empty map.
          */
-        fun <K, V> new(): SmallMap<K, V> = SmallMap(ArrayList())
+        fun <K, V> new(): SmallMap<K, V> = SmallMap(VecMap.new())
 
         fun <K, V> default(): SmallMap<K, V> = new()
 
         /**
          * Create an empty map with specified capacity.
          */
-        fun <K, V> withCapacity(n: Int): SmallMap<K, V> = SmallMap(ArrayList(n))
+        fun <K, V> withCapacity(n: Int): SmallMap<K, V> = SmallMap(VecMap.withCapacity(n))
 
         fun <K, V> fromIterator(iter: Iterable<Pair<K, V>>): SmallMap<K, V> {
             val map = withCapacity<K, V>(if (iter is Collection<*>) iter.size else 0)
@@ -74,21 +68,21 @@ class SmallMap<K, V> internal constructor(
     }
 
     override fun toString(): String =
-        entries.joinToString(prefix = "{", postfix = "}", separator = ", ") {
-            "${formatDebug(it.key.key())}: ${formatDebug(it.value)}"
+        (0 until entries.len()).joinToString(prefix = "{", postfix = "}", separator = ", ") { i ->
+            "${formatDebug(entries.keyAt(i))}: ${formatDebug(entries.valueAt(i))}"
         }
 
     fun maybeDropIndex() {
         // No-op in this Kotlin implementation.
     }
 
-    fun keys(): Sequence<K> = entries.asSequence().map { it.key.key() }
+    fun keys(): Sequence<K> = entries.keys()
 
-    fun values(): Sequence<V> = entries.asSequence().map { it.value }
+    fun values(): Sequence<V> = entries.values()
 
     fun valuesMut(): Sequence<V> = values()
 
-    fun iter(): Sequence<Pair<K, V>> = entries.asSequence().map { Pair(it.key.key(), it.value) }
+    fun iter(): Sequence<Pair<K, V>> = entries.iter()
 
     fun iterMut(): Sequence<Pair<K, V>> = iter()
 
@@ -100,92 +94,83 @@ class SmallMap<K, V> internal constructor(
 
     fun intoIterHashed(): Sequence<Pair<Hashed<K>, V>> = iterHashed()
 
-    fun iterHashed(): Sequence<Pair<Hashed<K>, V>> = entries.asSequence().map { Pair(it.key, it.value) }
+    fun iterHashed(): Sequence<Pair<Hashed<K>, V>> = entries.iterHashed()
 
     fun reserve(additional: Int) {
-        // No-op in this Kotlin implementation.
+        entries.reserve(additional)
     }
 
-    fun capacity(): Int = entries.size
+    fun capacity(): Int = entries.capacity()
 
-    fun first(): Pair<K, V>? = entries.firstOrNull()?.let { Pair(it.key.key(), it.value) }
+    fun first(): Pair<K, V>? = if (entries.isEmpty()) null else entries.getIndex(0)
 
-    fun last(): Pair<K, V>? = entries.lastOrNull()?.let { Pair(it.key.key(), it.value) }
+    fun last(): Pair<K, V>? =
+        if (entries.isEmpty()) null else entries.getIndex(entries.len() - 1)
 
     fun isEmpty(): Boolean = entries.isEmpty()
 
-    fun len(): Int = entries.size
+    fun len(): Int = entries.len()
 
     fun clear() {
         entries.clear()
     }
 
-    fun getIndex(index: Int): Pair<K, V>? {
-        val e = entries.getOrNull(index) ?: return null
-        return Pair(e.key.key(), e.value)
-    }
+    fun getIndex(index: Int): Pair<K, V>? = entries.getIndex(index)
 
     fun getHashedByValue(key: Hashed<K>): V? {
         val index = getIndexOfHashedByValue(key) ?: return null
-        return entries[index].value
+        return entries.valueAt(index)
     }
 
     fun <Q> getHashed(key: Hashed<Q>): V? where Q : Equivalent<K> {
         val index = getIndexOfHashed(key) ?: return null
-        return entries[index].value
+        return entries.valueAt(index)
     }
 
     fun get(key: K): V? {
         val index = getIndexOf(key) ?: return null
-        return entries[index].value
+        return entries.valueAt(index)
     }
 
     fun <Q> get(key: Q): V? where Q : Equivalent<K> {
         val index = getIndexOf(key) ?: return null
-        return entries[index].value
+        return entries.valueAt(index)
     }
 
     fun getIndexOfHashedByValue(key: Hashed<K>): Int? {
-        for ((i, e) in entries.withIndex()) {
-            if (e.key == key) return i
-        }
-        return null
+        return entries.getIndexOfHashedRaw(key.hash()) { k -> k == key.key() }
     }
 
     fun <Q> getIndexOfHashed(key: Hashed<Q>): Int? where Q : Equivalent<K> {
-        val q = key.key()
-        for ((i, e) in entries.withIndex()) {
-            if (q.equivalent(e.key.key())) return i
-        }
-        return null
+        return entries.getIndexOfHashed(key)
     }
 
     fun getIndexOf(key: K): Int? {
-        for ((i, e) in entries.withIndex()) {
-            if (e.key.key() == key) return i
+        for (i in 0 until entries.len()) {
+            if (entries.keyAt(i) == key) return i
         }
         return null
     }
 
     fun <Q> getIndexOf(key: Q): Int? where Q : Equivalent<K> {
-        for ((i, e) in entries.withIndex()) {
-            if (key.equivalent(e.key.key())) return i
+        for (i in 0 until entries.len()) {
+            if (key.equivalent(entries.keyAt(i))) return i
         }
         return null
     }
 
     fun insertHashedUniqueUnchecked(key: Hashed<K>, value: V) {
-        entries.add(Bucket(key, value))
+        entries.insertHashedUniqueUnchecked(key, value)
     }
 
     fun insertHashed(key: Hashed<K>, value: V): V? {
         val index = getIndexOfHashedByValue(key)
         return if (index != null) {
-            val prev = entries[index].value
-            entries[index].value = value
+            val prev = entries.valueAt(index)
+            entries.setValue(index, value)
             prev
         } else {
-            entries.add(Bucket(key, value))
+            entries.insertHashedUniqueUnchecked(key, value)
             null
         }
     }
@@ -196,31 +181,31 @@ class SmallMap<K, V> internal constructor(
 
     fun insertUniqueUnchecked(key: K, value: V): Pair<K, V> {
         val hashed = Hashed.new(key)
-        entries.add(Bucket(hashed, value))
-        val inserted = entries.last()
-        return Pair(inserted.key.key(), inserted.value)
+        entries.insertHashedUniqueUnchecked(hashed, value)
+        return Pair(hashed.key(), value)
     }
 
     fun shiftRemoveHashedByValue(key: Hashed<K>): V? {
         val index = getIndexOfHashedByValue(key) ?: return null
-        return entries.removeAt(index).value
+        val (_, v) = entries.remove(index)
+        return v
     }
 
     fun <Q> shiftRemoveHashed(key: Hashed<Q>): V? where Q : Equivalent<K> {
         val index = getIndexOfHashed(key) ?: return null
-        return entries.removeAt(index).value
+        val (_, v) = entries.remove(index)
+        return v
     }
 
     fun <Q> shiftRemoveHashedEntry(key: Hashed<Q>): Pair<K, V>? where Q : Equivalent<K> {
         val index = getIndexOfHashed(key) ?: return null
-        val entry = entries.removeAt(index)
-        return Pair(entry.key.key(), entry.value)
+        val (h, v) = entries.remove(index)
+        return Pair(h.intoKey(), v)
     }
 
     fun shiftRemoveIndexHashed(i: Int): Pair<Hashed<K>, V>? {
-        if (i !in entries.indices) return null
-        val entry = entries.removeAt(i)
-        return Pair(entry.key, entry.value)
+        if (i < 0 || i >= entries.len()) return null
+        return entries.remove(i)
     }
 
     fun shiftRemoveIndex(i: Int): Pair<K, V>? {
@@ -230,36 +215,37 @@ class SmallMap<K, V> internal constructor(
 
     fun shiftRemove(key: K): V? {
         val index = getIndexOf(key) ?: return null
-        return entries.removeAt(index).value
+        val (_, v) = entries.remove(index)
+        return v
     }
 
     fun <Q> shiftRemove(key: Q): V? where Q : Equivalent<K> {
         val index = getIndexOf(key) ?: return null
-        return entries.removeAt(index).value
+        val (_, v) = entries.remove(index)
+        return v
     }
 
     fun shiftRemoveEntry(key: K): Pair<K, V>? {
         val index = getIndexOf(key) ?: return null
-        val entry = entries.removeAt(index)
-        return Pair(entry.key.key(), entry.value)
+        val (h, v) = entries.remove(index)
+        return Pair(h.intoKey(), v)
     }
 
     fun <Q> shiftRemoveEntry(key: Q): Pair<K, V>? where Q : Equivalent<K> {
         val index = getIndexOf(key) ?: return null
-        val entry = entries.removeAt(index)
-        return Pair(entry.key.key(), entry.value)
+        val (h, v) = entries.remove(index)
+        return Pair(h.intoKey(), v)
     }
 
     fun pop(): Pair<K, V>? {
-        if (entries.isEmpty()) return null
-        val entry = entries.removeAt(entries.lastIndex)
-        return Pair(entry.key.intoKey(), entry.value)
+        val (h, v) = entries.pop() ?: return null
+        return Pair(h.intoKey(), v)
     }
 
     fun stateCheck() {
         val seen = HashSet<K>()
-        for (entry in entries) {
-            check(seen.add(entry.key.key()))
+        for (i in 0 until entries.len()) {
+            check(seen.add(entries.keyAt(i)))
         }
     }
 
@@ -276,14 +262,7 @@ class SmallMap<K, V> internal constructor(
     }
 
     /** Hash entries in the iteration order. */
-    fun hashOrdered(): Int {
-        var result = 1
-        for ((key, value) in iterHashed()) {
-            result = 31 * result + key.hashCode()
-            result = 31 * result + (value?.hashCode() ?: 0)
-        }
-        return result
-    }
+    fun hashOrdered(): Int = entries.hashOrdered()
 
     /** Reverse the iteration order of the map. */
     fun reverse() {
@@ -292,15 +271,7 @@ class SmallMap<K, V> internal constructor(
 
     /** Retains only the elements specified by the predicate. */
     fun retain(f: (K, V) -> Boolean) {
-        var i = 0
-        while (i < entries.size) {
-            val entry = entries[i]
-            if (f(entry.key.key(), entry.value)) {
-                i += 1
-            } else {
-                entries.removeAt(i)
-            }
-        }
+        entries.retain(f)
     }
 
     fun extend(iter: Iterable<Pair<K, V>>) {
@@ -317,24 +288,20 @@ private fun formatDebug(value: Any?): String = when (value) {
     else -> value.toString()
 }
 
-private fun <K : Comparable<K>, V> SmallMap<K, V>.isSortedByKey(): Boolean {
-    return entries.asSequence().map { it.key.key() }.zipWithNext().all { (left, right) -> left <= right }
-}
-
 /** Reference to the actual entry in the map. */
 class OccupiedEntry<K, V> internal constructor(
     private val map: SmallMap<K, V>,
     private val index: Int,
 ) {
     /** Key for this entry. */
-    fun key(): K = map.entries[index].key.key()
+    fun key(): K = map.entries.keyAt(index)
 
     /** Value for this entry. */
-    fun get(): V = map.entries[index].value
+    fun get(): V = map.entries.valueAt(index)
 
     /** Replace the value associated with the entry. */
     fun set(value: V) {
-        map.entries[index].value = value
+        map.entries.setValue(index, value)
     }
 }
 
@@ -387,6 +354,5 @@ sealed class Entry<K, V> {
 
 /** Sort entries by key. */
 fun <K : Comparable<K>, V> SmallMap<K, V>.sortKeys() {
-    if (isSortedByKey()) return
-    entries.sortWith(compareBy { it.key.key() })
+    entries.vecMapSortKeys()
 }
