@@ -156,6 +156,12 @@ class SmallMapTest {
     }
 
     @Test
+    fun testSmallmapDebug() {
+        val s = SmallMap.fromIter(listOf(Pair(1, "test"), Pair(2, "more"))).toString()
+        assertEquals("{1: \"test\", 2: \"more\"}", s)
+    }
+
+    @Test
     fun testPopSmall() {
         val map = SmallMap.new<Int, Int>()
         for (i in 0..5) {
