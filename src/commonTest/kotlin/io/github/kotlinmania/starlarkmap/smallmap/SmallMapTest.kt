@@ -156,6 +156,21 @@ class SmallMapTest {
     }
 
     @Test
+    fun entry() {
+        val map = SmallMap.new<Int, Int>()
+        for (i in 0..99) {
+            when (val e = map.entry(i)) {
+                is Entry.Vacant -> e.entry.insert(i * 2)
+                is Entry.Occupied -> error("expected vacant")
+            }
+            when (val e = map.entry(i)) {
+                is Entry.Occupied -> {}
+                is Entry.Vacant -> error("expected occupied")
+            }
+        }
+    }
+
+    @Test
     fun testSmallmapDebug() {
         val s = SmallMap.fromIter(listOf(Pair(1, "test"), Pair(2, "more"))).toString()
         assertEquals("{1: \"test\", 2: \"more\"}", s)
@@ -322,4 +337,26 @@ class SmallMapTest {
         assertEquals(expected, map.iter().toList())
     }
 
+    @Test
+    fun testAndModify() {
+        val map = SmallMap.new<String, Int>()
+        map.insert("key1", 10)
+        map.insert("key3", 100)
+
+        val value1 = map.entry("key1").andModify { v -> v + 5 }.orInsert(0)
+        assertEquals(15, value1)
+        assertEquals(15, map.get("key1"))
+
+        val value2 = map.entry("key2").andModify { v -> v + 5 }.orInsert(10)
+        assertEquals(10, value2)
+        assertEquals(10, map.get("key2"))
+
+        val value3 = map
+            .entry("key3")
+            .andModify { v -> v * 2 }
+            .andModify { v -> v + 10 }
+            .orInsert(0)
+        assertEquals(210, value3)
+        assertEquals(210, map.get("key3"))
+    }
 }
