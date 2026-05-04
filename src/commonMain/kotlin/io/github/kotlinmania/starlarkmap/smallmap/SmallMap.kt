@@ -4,10 +4,9 @@ package io.github.kotlinmania.starlarkmap.smallmap
 /*
  * Copyright 2019 The Starlark in Rust Authors.
  * Copyright (c) Facebook, Inc. and its affiliates.
- * Copyright (c) 2025 Sydney Renee, The Solace Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not import this file except in compliance with the License.
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     https://www.apache.org/licenses/LICENSE-2.0
@@ -25,8 +24,27 @@ import io.github.kotlinmania.starlarkmap.StarlarkHashValue
 import io.github.kotlinmania.starlarkmap.vecmap.VecMap
 import io.github.kotlinmania.starlarkmap.vecmap.sortKeys as vecMapSortKeys
 
-/** Max size of a map when we do not create an index. */
-private const val NO_INDEX_THRESHOLD: Int = 32
+/**
+ * A Map with deterministic iteration order that specializes its storage based on the number of
+ * entries to optimize memory. This is essentially `IndexMap` with two changes:
+ * - no index is created for small maps
+ * - short hashes are stored next to keys
+ */
+
+/**
+ * Max size of a map when we do not create an index.
+ *
+ * Upstream:
+ * - On nightly uses SIMD, so uses 32
+ * - On stable uses 16
+ */
+private const val NO_INDEX_THRESHOLD: Int = 16
+
+data class SmallMapFullEntry<K, V>(
+    val index: Int,
+    val key: K,
+    val value: V,
+)
 
 /**
  * A map with deterministic iteration order.
@@ -40,26 +58,11 @@ class SmallMap<K, V> internal constructor(
      */
     internal var index: HashMap<StarlarkHashValue, MutableList<Int>>? = null,
 ) {
-    /** Get the entry (occupied or not) for a hashed key. */
-    fun entryHashed(key: Hashed<K>): Entry<K, V> {
-        val i = getIndexOfHashedByValue(key)
-        return if (i != null) {
-            Entry.Occupied(OccupiedEntry(this, i))
-        } else {
-            Entry.Vacant(VacantEntry(this, key))
-        }
-    }
-
-    /** Get the entry (occupied or not) for a key. */
-    fun entry(key: K): Entry<K, V> = entryHashed(Hashed.new(key))
-
     companion object {
         /**
          * Empty map.
          */
         fun <K, V> new(): SmallMap<K, V> = SmallMap(VecMap.new())
-
-        fun <K, V> default(): SmallMap<K, V> = new()
 
         /**
          * Create an empty map with specified capacity.
@@ -81,6 +84,8 @@ class SmallMap<K, V> internal constructor(
         }
 
         fun <K, V> fromIter(iter: Iterable<Pair<K, V>>): SmallMap<K, V> = fromIterator(iter)
+
+        fun <K, V> default(): SmallMap<K, V> = new()
     }
 
     override fun toString(): String =
@@ -91,7 +96,7 @@ class SmallMap<K, V> internal constructor(
     /**
      * Drop the index if the map is too small, and the index is not really needed.
      *
-     * We don't allocate index prematurely when we add entries the map, but we keep it
+     * We do not allocate index prematurely when we add entries the map, but we keep it
      * allocated when we remove entries from the map.
      */
     fun maybeDropIndex() {
@@ -104,27 +109,31 @@ class SmallMap<K, V> internal constructor(
 
     fun values(): Sequence<V> = entries.values()
 
-    fun valuesMut(): Sequence<V> = values()
+    fun intoKeys(): Sequence<K> = entries.intoIter().asSequence().map { it.first }
+
+    fun intoValues(): Sequence<V> = entries.intoIter().asSequence().map { it.second }
+
+    fun valuesMut(): Sequence<V> = entries.valuesMut()
 
     fun iter(): Sequence<Pair<K, V>> = entries.iter()
 
-    fun iterMut(): Sequence<Pair<K, V>> = iter()
+    fun iterHashed(): Sequence<Pair<Hashed<K>, V>> = entries.iterHashed()
 
-    fun iterMutUnchecked(): Sequence<Pair<K, V>> = iter()
+    fun intoIterHashed(): Iterator<Pair<Hashed<K>, V>> = entries.intoIterHashed()
+
+    fun iterMut(): Sequence<Pair<K, V>> = entries.iterMut()
+
+    fun iterMutUnchecked(): Sequence<Pair<K, V>> = entries.iterMutUnchecked()
 
     operator fun iterator(): Iterator<Pair<K, V>> = iter().iterator()
 
-    fun intoIter(): Iterator<Pair<K, V>> = iterator()
-
-    fun intoIterHashed(): Sequence<Pair<Hashed<K>, V>> = iterHashed()
-
-    fun iterHashed(): Sequence<Pair<Hashed<K>, V>> = entries.iterHashed()
+    fun intoIter(): Iterator<Pair<K, V>> = entries.intoIter()
 
     fun reserve(additional: Int) {
         entries.reserve(additional)
         val idx = index
         if (idx != null) {
-            // No-op for HashMap — Kotlin's stdlib HashMap doesn't expose reserve.
+            // No-op for HashMap — Kotlin stdlib HashMap does not expose reserve.
         } else if (entries.len() + additional > NO_INDEX_THRESHOLD) {
             createIndex(entries.len() + additional)
         }
@@ -147,6 +156,26 @@ class SmallMap<K, V> internal constructor(
     }
 
     fun getIndex(index: Int): Pair<K, V>? = entries.getIndex(index)
+
+    fun <Q> getFull(key: Q): SmallMapFullEntry<K, V>? where Q : Equivalent<K> {
+        return getFullHashed(Hashed.new(key))
+    }
+
+    fun getFull(key: K): SmallMapFullEntry<K, V>? {
+        return getFullHashedByValue(Hashed.new(key))
+    }
+
+    fun <Q> getFullHashed(key: Hashed<Q>): SmallMapFullEntry<K, V>? where Q : Equivalent<K> {
+        val index = getIndexOfHashed(key) ?: return null
+        val pair = entries.getIndex(index) ?: return null
+        return SmallMapFullEntry(index, pair.first, pair.second)
+    }
+
+    fun getFullHashedByValue(key: Hashed<K>): SmallMapFullEntry<K, V>? {
+        val index = getIndexOfHashedByValue(key) ?: return null
+        val pair = entries.getIndex(index) ?: return null
+        return SmallMapFullEntry(index, pair.first, pair.second)
+    }
 
     fun getHashedByValue(key: Hashed<K>): V? {
         val i = getIndexOfHashedByValue(key) ?: return null
@@ -186,20 +215,61 @@ class SmallMap<K, V> internal constructor(
      * Find the index of an entry by hash + equality predicate.
      *
      * If the index is allocated (large maps), use it for O(1) hash lookup. Otherwise fall
-     * back to the underlying [VecMap]'s linear scan. Mirrors small_map.rs:313-323.
+     * back to the underlying [VecMap] linear scan. Mirrors upstream `smallMap.rs` lines 313-323.
      */
     private fun getIndexOfHashedRaw(hash: StarlarkHashValue, eq: (K) -> Boolean): Int? {
         val idx = index
         return if (idx == null) {
             entries.getIndexOfHashedRaw(hash, eq)
         } else {
-            val chain = idx[hash] ?: return null
-            for (i in chain) {
-                if (eq(entries.keyAt(i))) return i
-            }
-            null
+            getIndexOfHashedRawWithIndex(hash, eq, idx)
         }
     }
+
+    private fun getIndexOfHashedRawWithIndex(
+        hash: StarlarkHashValue,
+        eq: (K) -> Boolean,
+        index: HashMap<StarlarkHashValue, MutableList<Int>>,
+    ): Int? {
+        val chain = index[hash] ?: return null
+        for (i in chain) {
+            if (eq(entries.keyAt(i))) return i
+        }
+        return null
+    }
+
+    /** Find a mutable value by a hashed key. */
+    fun <Q> getMutHashed(key: Hashed<Q>): MutableValueRef<V>? where Q : Equivalent<K> {
+        val i = getIndexOfHashed(key) ?: return null
+        return MutableValueRef(
+            get = { entries.valueAt(i) },
+            set = { v -> entries.setValue(i, v) },
+        )
+    }
+
+    fun getMutHashedByValue(key: Hashed<K>): MutableValueRef<V>? {
+        val i = getIndexOfHashedByValue(key) ?: return null
+        return MutableValueRef(
+            get = { entries.valueAt(i) },
+            set = { v -> entries.setValue(i, v) },
+        )
+    }
+
+    /** Find a mutable value by a given key. */
+    fun <Q> getMut(key: Q): MutableValueRef<V>? where Q : Equivalent<K> {
+        return getMutHashed(Hashed.new(key))
+    }
+
+    fun getMut(key: K): MutableValueRef<V>? = getMutHashedByValue(Hashed.new(key))
+
+    fun containsKeyHashedByValue(key: Hashed<K>): Boolean = getIndexOfHashedByValue(key) != null
+
+    fun <Q> containsKeyHashed(key: Hashed<Q>): Boolean where Q : Equivalent<K> =
+        getIndexOfHashed(key) != null
+
+    fun containsKey(key: K): Boolean = getIndexOf(key) != null
+
+    fun <Q> containsKey(key: Q): Boolean where Q : Equivalent<K> = getIndexOf(key) != null
 
     fun insertHashedUniqueUnchecked(key: Hashed<K>, value: V) {
         val hash = key.hash()
@@ -226,12 +296,6 @@ class SmallMap<K, V> internal constructor(
     }
 
     fun insert(key: K, value: V): V? = insertHashed(Hashed.new(key), value)
-
-    fun insertUniqueUnchecked(key: K, value: V): Pair<K, V> {
-        val hashed = Hashed.new(key)
-        insertHashedUniqueUnchecked(hashed, value)
-        return Pair(hashed.key(), value)
-    }
 
     fun shiftRemoveHashedByValue(key: Hashed<K>): V? {
         val i = getIndexOfHashedByValue(key) ?: return null
@@ -283,7 +347,7 @@ class SmallMap<K, V> internal constructor(
 
     /**
      * Remove the entry at `index`, updating the secondary [index] to drop the removed
-     * position and decrement positions above it. Mirrors small_map.rs:565-586.
+     * position and decrement positions above it. Mirrors upstream `smallMap.rs` lines 565-586.
      */
     private fun removeAtIndex(i: Int): Pair<Hashed<K>, V> {
         val idx = index
@@ -311,9 +375,23 @@ class SmallMap<K, V> internal constructor(
         return shiftRemoveIndex(entries.len() - 1)
     }
 
+    /** Get the entry (occupied or not) for a hashed key. */
+    fun entryHashed(key: Hashed<K>): Entry<K, V> {
+        val i = getIndexOfHashedByValue(key)
+        return if (i != null) {
+            Entry.Occupied(OccupiedEntry(this, i))
+        } else {
+            Entry.Vacant(VacantEntry(this, key))
+        }
+    }
+
+    /** Get the entry (occupied or not) for a key. */
+    fun entry(key: K): Entry<K, V> = entryHashed(Hashed.new(key))
+
     /**
-     * Verify that the map is internally consistent. Mirrors small_map.rs:124-141
-     * `assert_invariants`.
+     * Verify that the map is internally consistent.
+     *
+     * Mirrors upstream `smallMap.rs` lines 124-141 (`assertInvariants`).
      */
     fun stateCheck() {
         val idx = index
@@ -357,8 +435,8 @@ class SmallMap<K, V> internal constructor(
     /** Reverse the iteration order of the map. */
     fun reverse() {
         entries.reverse()
-        // Reverse changes every entry's index. Rebuild the index against the new
-        // positions. Mirrors small_map.rs:760-769.
+        // Reverse changes every entry index. Rebuild the index against the new
+        // positions. Mirrors upstream `smallMap.rs` lines 760-769.
         val idx = index
         if (idx != null) {
             val len = entries.len()
@@ -387,7 +465,7 @@ class SmallMap<K, V> internal constructor(
 
     /**
      * Allocate the index and populate it from the current entries.
-     * Mirrors small_map.rs:432-443 `create_index`.
+     * Mirrors upstream `smallMap.rs` lines 432-443 (`createIndex`).
      */
     private fun createIndex(capacity: Int) {
         check(index == null)
@@ -402,7 +480,7 @@ class SmallMap<K, V> internal constructor(
 
     /**
      * Rebuild the index from the current entries. Used after operations that reorder
-     * entries (sort, retain). Mirrors small_map.rs:446-455.
+     * entries (sort, retain). Mirrors upstream `smallMap.rs` lines 446-455.
      */
     internal fun rebuildIndex() {
         val idx = index ?: return
@@ -431,6 +509,13 @@ class OccupiedEntry<K, V> internal constructor(
 
     /** Value for this entry. */
     fun get(): V = map.entries.valueAt(index)
+
+    /** Mutable reference to the value in the entry. */
+    fun getMut(): MutableValueRef<V> =
+        MutableValueRef(
+            get = { map.entries.valueAt(index) },
+            set = { v -> map.entries.setValue(index, v) },
+        )
 
     /** Replace the value associated with the entry. */
     fun set(value: V) {
@@ -479,7 +564,8 @@ sealed class Entry<K, V> {
     /** Modify if present. Returns this entry. */
     fun andModify(f: (V) -> V): Entry<K, V> {
         if (this is Occupied) {
-            entry.set(f(entry.get()))
+            val newValue = f(entry.get())
+            entry.set(newValue)
         }
         return this
     }
@@ -489,4 +575,15 @@ sealed class Entry<K, V> {
 fun <K : Comparable<K>, V> SmallMap<K, V>.sortKeys() {
     entries.vecMapSortKeys()
     rebuildIndex()
+}
+
+class MutableValueRef<V>(
+    get: () -> V,
+    set: (V) -> Unit,
+) {
+    private val getFn: () -> V = get
+    private val setFn: (V) -> Unit = set
+
+    fun get(): V = getFn()
+    fun set(value: V) = setFn(value)
 }

@@ -4,10 +4,9 @@ package io.github.kotlinmania.starlarkmap.smallmap.iter
 /*
  * Copyright 2019 The Starlark in Rust Authors.
  * Copyright (c) Facebook, Inc. and its affiliates.
- * Copyright (c) 2025 Sydney Renee, The Solace Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not import this file except in compliance with the License.
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     https://www.apache.org/licenses/LICENSE-2.0
@@ -30,8 +29,9 @@ import io.github.kotlinmania.starlarkmap.vecmap.iter.Values as VecMapValues
 /**
  * Iterator types for [SmallMap][starlarkmap.smallmap.SmallMap].
  *
- * `defIter()` and `defDoubleEndedIter()` macro expansions.
- * In Kotlin, they delegate to the corresponding vecMap iterators.
+ * `def_iter!()` and `def_double_ended_iter!()` macro expansions.
+ *
+ * In Kotlin, they delegate to the corresponding `vec_map` iterator types.
  */
 
 internal class IterHashed<K, V>(
