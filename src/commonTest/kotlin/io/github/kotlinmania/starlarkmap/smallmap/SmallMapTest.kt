@@ -21,11 +21,161 @@ package io.github.kotlinmania.starlarkmap.smallmap
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFails
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SmallMapTest {
+    @Test
+    fun emptyMap() {
+        val m = SmallMap.new<Byte, String>()
+        assertTrue(m.isEmpty())
+        assertEquals(0, m.len())
+        assertNull(m.iter().firstOrNull())
+    }
+
+    @Test
+    fun fewEntries() {
+        val entries1 = listOf(Pair(0, 'a'), Pair(1, 'b'))
+        val m1 = SmallMap.fromIter(entries1)
+
+        val entries2 = listOf(Pair(1, 'b'), Pair(0, 'a'))
+        val m2 = SmallMap.fromIter(entries2)
+        assertFalse(m1.isEmpty())
+        assertEquals(2, m1.len())
+        assertFalse(m2.isEmpty())
+        assertEquals(2, m2.len())
+
+        assertEquals(entries1, m1.iter().toList())
+        assertEquals(entries2, m2.iter().toList())
+        assertNotEquals(m1.iter().toList(), m2.iter().toList())
+        assertEquals(m1.iter().toList(), m1.iter().toList())
+        assertEquals(m2.iter().toList(), m2.iter().toList())
+
+        assertEquals('a', m1.get(0))
+        assertNull(m1.get(3))
+        assertEquals('b', m2.get(1))
+        assertNull(m2.get(3))
+
+        assertEquals(Pair(0, 'a'), m1.getIndex(0))
+        assertEquals(Pair(1, 'b'), m1.getIndex(1))
+        assertNull(m1.getIndex(2))
+
+        val different = SmallMap.fromIter(listOf(Pair(0, 'a'), Pair(1, 'c')))
+        assertNotEquals(m1.iter().toList(), different.iter().toList())
+
+        val values1 = m1.iter().toList()
+        val values2 = m1.iter().toList()
+        assertEquals(values1, values2)
+    }
+
+    @Test
+    fun manyEntries() {
+        val numbers = (0..25).toList()
+        val letters = ('a'..'z').toList()
+
+        val entries1 = numbers.zip(letters)
+        val m1 = SmallMap.fromIter(entries1)
+
+        val numbersRev = (0..25).reversed().toList()
+        val lettersRev = ('a'..'z').reversed().toList()
+        val entries2 = numbersRev.zip(lettersRev)
+        val m2 = SmallMap.fromIter(entries2)
+        assertFalse(m1.isEmpty())
+        assertEquals(26, m1.len())
+        assertFalse(m2.isEmpty())
+        assertEquals(26, m2.len())
+
+        assertEquals(entries1, m1.intoIter().asSequence().toList())
+        assertEquals(entries2, m2.intoIter().asSequence().toList())
+        assertNotEquals(m1.iter().toList(), m2.iter().toList())
+        assertEquals(m1.iter().toList(), m1.iter().toList())
+        assertEquals(m2.iter().toList(), m2.iter().toList())
+
+        assertEquals('b', m1.get(1))
+        assertNull(m1.get(30))
+        assertEquals('a', m2.get(0))
+        assertNull(m2.get(30))
+
+        val notM1 = SmallMap.fromIter(entries1).also { it.shiftRemove(1) }
+        assertNotEquals(m1.iter().toList(), notM1.iter().toList())
+
+        val values1 = m1.iter().toList()
+        val values2 = m1.iter().toList()
+        assertEquals(values1, values2)
+    }
+
+    @Test
+    fun testSmallmapMacro() {
+        val map = SmallMap.fromIter(listOf(Pair(1, "a"), Pair(3, "b")))
+        val i = map.intoIter()
+        assertEquals(Pair(1, "a"), i.next())
+        assertEquals(Pair(3, "b"), i.next())
+        assertFalse(i.hasNext())
+    }
+
+    @Test
+    fun testClone() {
+        val map = SmallMap.fromIter(listOf(Pair(1, "a"), Pair(3, "b")))
+        val values1 = map.iter().toList()
+        val values2 = map.iter().toList()
+        assertEquals(listOf(Pair(1, "a"), Pair(3, "b")), values1)
+        assertEquals(values1, values2)
+
+        val keys1 = map.keys().toList()
+        val keys2 = map.keys().toList()
+        assertEquals(listOf(1, 3), keys1)
+        assertEquals(keys1, keys2)
+
+        val vs1 = map.values().toList()
+        val vs2 = map.values().toList()
+        assertEquals(listOf("a", "b"), vs1)
+        assertEquals(vs1, vs2)
+    }
+
+    @Test
+    fun testDuplicateHashes() {
+        // A type which always gives hash collisions
+        data class K(val n: Int) {
+            override fun hashCode(): Int = 0
+        }
+
+        val map = SmallMap.fromIter(listOf(Pair(K(1), "test"), Pair(K(3), "more")))
+        assertEquals("test", map.get(K(1)))
+        assertNull(map.get(K(2)))
+        assertEquals("more", map.get(K(3)))
+
+        assertNull(map.insert(K(2), "magic"))
+        assertEquals("magic", map.get(K(2)))
+
+        assertEquals("test", map.shiftRemove(K(1)))
+        assertNull(map.get(K(1)))
+        assertEquals(listOf(K(3), K(2)), map.keys().toList())
+    }
+
+    @Test
+    fun entry() {
+        val map = SmallMap.new<Int, Int>()
+        for (i in 0..99) {
+            when (val e = map.entry(i)) {
+                is Entry.Vacant -> e.entry.insert(i * 2)
+                is Entry.Occupied -> error("expected vacant")
+            }
+            when (val e = map.entry(i)) {
+                is Entry.Occupied -> {}
+                is Entry.Vacant -> error("expected occupied")
+            }
+        }
+    }
+
+    @Test
+    fun testSmallmapDebug() {
+        val s = SmallMap.fromIter(listOf(Pair(1, "test"), Pair(2, "more"))).toString()
+        assertEquals("{1: \"test\", 2: \"more\"}", s)
+    }
+
     @Test
     fun testPopSmall() {
         val map = SmallMap.new<Int, Int>()
@@ -103,6 +253,28 @@ class SmallMapTest {
     }
 
     @Test
+    fun testSortKeysUpdatesIndexOnPanic() {
+        data class Key(val n: UInt) : Comparable<Key> {
+            override fun compareTo(other: Key): Int {
+                if (n < 10u && other.n < 10u) {
+                    error("panic in compareTo")
+                }
+                return n.compareTo(other.n)
+            }
+        }
+
+        val map = SmallMap.new<Key, UInt>()
+        for (i in (1..100).reversed()) {
+            map.insert(Key(i.toUInt()), i.toUInt() * 10u)
+        }
+        assertFails {
+            map.sortKeys()
+        }
+        // If the index were not updated on panic, the following call would fail.
+        map.stateCheck()
+    }
+
+    @Test
     fun testEqOrdered() {
         val m0 = SmallMap.fromIter(listOf(Pair(1, 2), Pair(3, 4)))
         val m1 = SmallMap.fromIter(listOf(Pair(1, 2), Pair(3, 4)))
@@ -163,5 +335,28 @@ class SmallMapTest {
             assertEquals((i * 10).toString(), map.get(i.toString()))
         }
         assertEquals(expected, map.iter().toList())
+    }
+
+    @Test
+    fun testAndModify() {
+        val map = SmallMap.new<String, Int>()
+        map.insert("key1", 10)
+        map.insert("key3", 100)
+
+        val value1 = map.entry("key1").andModify { v -> v + 5 }.orInsert(0)
+        assertEquals(15, value1)
+        assertEquals(15, map.get("key1"))
+
+        val value2 = map.entry("key2").andModify { v -> v + 5 }.orInsert(10)
+        assertEquals(10, value2)
+        assertEquals(10, map.get("key2"))
+
+        val value3 = map
+            .entry("key3")
+            .andModify { v -> v * 2 }
+            .andModify { v -> v + 10 }
+            .orInsert(0)
+        assertEquals(210, value3)
+        assertEquals(210, map.get("key3"))
     }
 }

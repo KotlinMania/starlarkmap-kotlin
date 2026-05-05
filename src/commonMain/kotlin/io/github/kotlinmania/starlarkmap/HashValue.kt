@@ -1,13 +1,12 @@
-// port-lint: source src/hashValue.rs
+// port-lint: source hash_value.rs
 package io.github.kotlinmania.starlarkmap
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
  * Copyright (c) Facebook, Inc. and its affiliates.
- * Copyright (c) 2025 Sydney Renee, The Solace Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not import this file except in compliance with the License.
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     https://www.apache.org/licenses/LICENSE-2.0
@@ -28,22 +27,11 @@ data class StarlarkHashValue private constructor(
 ) {
     companion object {
         /**
-         * Create a new [StarlarkHashValue] for the given key.
+         * Create a new [StarlarkHashValue] using the [hashCode] contract for the given key.
          */
         fun new(key: Any?): StarlarkHashValue {
             val hasher = StarlarkHasher()
-            when (key) {
-                null -> hasher.writeU8(0u)
-                is Boolean -> hasher.writeU8(if (key) 1u else 0u)
-                is Int -> hasher.writeU32(key)
-                is UInt -> hasher.writeU32(key)
-                is Long -> hasher.writeU64(key.toULong())
-                is ULong -> hasher.writeU64(key)
-                is ByteArray -> hasher.write(key)
-                is String -> hasher.write(key.encodeToByteArray())
-                is StarlarkHashable -> key.writeHash(hasher)
-                else -> hasher.writeU32(key.hashCode())
-            }
+            key.hash(hasher)
             return hasher.finishSmall()
         }
 
@@ -61,7 +49,7 @@ data class StarlarkHashValue private constructor(
          * Input can also be a non-well swizzled hash to create better hash.
          */
         fun hash64(h: ULong): StarlarkHashValue {
-            // `fmix64` function from MurMur3 hash (public domain).
+            // `fmix64` function from MurMur3 hash (which is in public domain).
             var x = h
             x = x xor (x shr 33)
             x *= 0xff51afd7ed558ccdUL
@@ -89,4 +77,19 @@ data class StarlarkHashValue private constructor(
  */
 fun interface StarlarkHashable {
     fun writeHash(hasher: StarlarkHasher)
+}
+
+private fun Any?.hash(state: StarlarkHasher) {
+    when (this) {
+        null -> state.writeU8(0u.toUByte())
+        is Boolean -> state.writeU8(if (this) 1u.toUByte() else 0u.toUByte())
+        is Int -> state.writeU32(this.toUInt())
+        is UInt -> state.writeU32(this)
+        is Long -> state.writeU64(this.toULong())
+        is ULong -> state.writeU64(this)
+        is ByteArray -> state.write(this)
+        is String -> state.write(this.encodeToByteArray())
+        is StarlarkHashable -> this.writeHash(state)
+        else -> state.writeU32(this.hashCode().toUInt())
+    }
 }

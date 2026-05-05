@@ -4,10 +4,9 @@ package io.github.kotlinmania.starlarkmap.vec2.iter
 /*
  * Copyright 2019 The Starlark in Rust Authors.
  * Copyright (c) Facebook, Inc. and its affiliates.
- * Copyright (c) 2025 Sydney Renee, The Solace Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not import this file except in compliance with the License.
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     https://www.apache.org/licenses/LICENSE-2.0
@@ -22,13 +21,13 @@ package io.github.kotlinmania.starlarkmap.vec2.iter
 /**
  * Iterator over [Vec2] elements.
  *
- * both `A` and `B` arrays. In Kotlin, [Vec2] uses two parallel lists, so this
- * iterator simply tracks an index into both lists.
+ * Rust uses pointers into the two backing slices. In Kotlin, [Vec2] uses two parallel
+ * lists, so this iterator tracks an index range into both lists.
  *
- * Implements [Iterator], [ExactSizeIterator], and [DoubleEndedIterator] semantics.
- *
+ * Implements [Iterator] with `len()`, `sizeHint()`, and `nextBack()` helpers mirroring
+ * the Rust API surface.
  */
-internal class Iter<A, B>(
+class Iter<A, B>(
     private val aaa: List<A>,
     private val bbb: List<B>,
 ) : Iterator<Pair<A, B>> {
@@ -65,13 +64,14 @@ internal class Iter<A, B>(
 /**
  * Iterator which consumes the [Vec2].
  *
- * owned `(A, B)` pairs, deallocating on drop. In Kotlin, there is no
- * ownership transfer — this iterator simply iterates over the lists.
+ * Rust yields owned `(A, B)` pairs and deallocates the backing allocation on drop.
+ * In Kotlin there is no manual deallocation, so this iterator only mirrors the
+ * iteration behaviour.
  *
- * Implements [Iterator], [ExactSizeIterator], and [DoubleEndedIterator] semantics.
- *
+ * Implements [Iterator] with `len()`, `sizeHint()`, and `nextBack()` helpers mirroring
+ * the Rust API surface.
  */
-internal class IntoIter<A, B>(
+class IntoIter<A, B>(
     private val aaa: List<A>,
     private val bbb: List<B>,
 ) : Iterator<Pair<A, B>> {
@@ -93,7 +93,7 @@ internal class IntoIter<A, B>(
         if (front >= back) return null
         back--
         val newLen = len()
-        val a = aaa[newLen]
+        val a = aaa[front + newLen]
         val b = bbb[back]
         return Pair(a, b)
     }

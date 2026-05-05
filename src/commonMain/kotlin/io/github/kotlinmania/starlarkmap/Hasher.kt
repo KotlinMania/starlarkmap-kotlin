@@ -23,159 +23,86 @@ package io.github.kotlinmania.starlarkmap
  * A hasher used by Starlark implementation.
  *
  * Starlark relies on stable hashing, and this is the hasher.
- *
- * This Kotlin port implements the same algorithm and reads bytes as little-endian
- * (matching common target architectures).
  */
-class StarlarkHasher {
+class StarlarkHasher : Hasher {
     companion object {
         /**
          * Creates a new hasher.
          */
-        fun new(): StarlarkHasher = StarlarkHasher()
+        fun new(): StarlarkHasher {
+            return StarlarkHasher()
+        }
     }
 
-    private val fx: FxHasher64 = FxHasher64()
+    // TODO(nga): `FxHasher64` is endian-dependent, this is not right.
+    private val inner: FxHasher64 = FxHasher64()
 
     /**
      * Finish the hash computation and return the result.
      */
-    fun finish(): ULong = fx.finish()
-
-    /**
-     * Finish the hash computation and return the lower 32 bits as a [StarlarkHashValue].
-     *
-     */
     fun finishSmall(): StarlarkHashValue {
+        // NOTE: Here we throw away half the key material we are given,
+        // taking only the lower 32 bits.
+        // Not a problem because the default hasher produces well-swizzled bits.
         return StarlarkHashValue.newUnchecked(finish().toUInt())
     }
 
-    fun write(bytes: ByteArray) {
-        fx.write(bytes)
+    override fun finish(): ULong {
+        return inner.finish()
     }
 
-    fun writeU8(i: UInt) {
-        fx.writeU8(i.toUByte())
+    override fun write(bytes: ByteArray) {
+        inner.write(bytes)
     }
 
-    fun writeU16(i: UInt) {
-        fx.writeU16(i.toUShort())
+    override fun writeU8(i: UByte) {
+        inner.writeU8(i)
     }
 
-    fun writeU32(i: Int) {
-        fx.writeU32(i.toUInt())
+    override fun writeU16(i: UShort) {
+        inner.writeU16(i)
     }
 
-    fun writeU32(i: UInt) {
-        fx.writeU32(i)
+    override fun writeU32(i: UInt) {
+        inner.writeU32(i)
     }
 
-    fun writeU64(i: ULong) {
-        fx.writeU64(i)
+    override fun writeU64(i: ULong) {
+        inner.writeU64(i)
     }
 
-    fun writeU128(low: ULong, high: ULong = 0UL) {
-        fx.writeU128(low, high)
+    override fun writeU128(i: U128) {
+        inner.writeU128(i)
     }
 
-    fun writeUsize(i: ULong) {
-        fx.writeUsize(i)
+    override fun writeUsize(i: ULong) {
+        inner.writeUsize(i)
     }
 }
 
 /**
  * `BuildHasher` implementation which produces [StarlarkHasher].
  */
-class StarlarkHasherBuilder {
-    fun buildHasher(): StarlarkHasher = StarlarkHasher()
+class StarlarkHasherBuilder : BuildHasher<StarlarkHasher> {
+    /**
+     * Create a new hasher.
+     */
+    override fun buildHasher(): StarlarkHasher {
+        return StarlarkHasher()
+    }
 }
 
-private class FxHasher64 {
-    private var hash: ULong = 0UL
-
-    fun write(bytes: ByteArray) {
-        hash = write64(hash, bytes)
-    }
-
-    fun writeU8(i: UByte) {
-        hash = hashWord(hash, i.toULong())
-    }
-
-    fun writeU16(i: UShort) {
-        hash = hashWord(hash, i.toULong())
-    }
-
-    fun writeU32(i: UInt) {
-        hash = hashWord(hash, i.toULong())
-    }
-
-    fun writeU64(i: ULong) {
-        hash = hashWord(hash, i)
-    }
-
-    fun writeU128(low: ULong, high: ULong) {
-        writeU64(low)
-        writeU64(high)
-    }
-
-    fun writeUsize(i: ULong) {
-        writeU64(i)
-    }
-
-    fun finish(): ULong = hash
+interface Hasher {
+    fun finish(): ULong
+    fun write(bytes: ByteArray)
+    fun writeU8(i: UByte)
+    fun writeU16(i: UShort)
+    fun writeU32(i: UInt)
+    fun writeU64(i: ULong)
+    fun writeU128(i: U128)
+    fun writeUsize(i: ULong)
 }
 
-private const val FX_ROTATE: Int = 5
-private const val FX_SEED64: ULong = 0x517cc1b727220a95UL
-
-private fun rotateLeft64(x: ULong, bits: Int): ULong {
-    val n = bits and 63
-    if (n == 0) return x
-    return (x shl n) or (x shr (64 - n))
-}
-
-private fun hashWord(hash: ULong, word: ULong): ULong {
-    return (rotateLeft64(hash, FX_ROTATE) xor word) * FX_SEED64
-}
-
-private fun write64(initial: ULong, bytes: ByteArray): ULong {
-    var hash = initial
-
-    var offset = 0
-    while (bytes.size - offset >= 8) {
-        val n = readU64Le(bytes, offset)
-        hash = hashWord(hash, n)
-        offset += 8
-    }
-
-    if (bytes.size - offset >= 4) {
-        val n = readU32Le(bytes, offset)
-        hash = hashWord(hash, n.toULong())
-        offset += 4
-    }
-
-    while (offset < bytes.size) {
-        hash = hashWord(hash, bytes[offset].toUByte().toULong())
-        offset += 1
-    }
-
-    return hash
-}
-
-private fun readU32Le(bytes: ByteArray, offset: Int): UInt {
-    return (bytes[offset + 0].toUByte().toUInt()) or
-        (bytes[offset + 1].toUByte().toUInt() shl 8) or
-        (bytes[offset + 2].toUByte().toUInt() shl 16) or
-        (bytes[offset + 3].toUByte().toUInt() shl 24)
-}
-
-private fun readU64Le(bytes: ByteArray, offset: Int): ULong {
-    return (bytes[offset + 0].toUByte().toULong()) or
-        (bytes[offset + 1].toUByte().toULong() shl 8) or
-        (bytes[offset + 2].toUByte().toULong() shl 16) or
-        (bytes[offset + 3].toUByte().toULong() shl 24) or
-        (bytes[offset + 4].toUByte().toULong() shl 32) or
-        (bytes[offset + 5].toUByte().toULong() shl 40) or
-        (bytes[offset + 6].toUByte().toULong() shl 48) or
-        (bytes[offset + 7].toUByte().toULong() shl 56)
+interface BuildHasher<H : Hasher> {
+    fun buildHasher(): H
 }

@@ -22,45 +22,42 @@ package io.github.kotlinmania.starlarkmap.vecmap
 import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
 import io.github.kotlinmania.starlarkmap.StarlarkHashValue
+import io.github.kotlinmania.starlarkmap.vec2.Vec2
+import io.github.kotlinmania.starlarkmap.vecmap.simd.findHashInArray
 
-/**
- * Vec-backed map implementation used by [io.github.kotlinmania.starlarkmap.smallmap.SmallMap].
- *
- * deterministic iteration order and API behaviour with a straightforward linear search.
- */
 internal class VecMap<K, V> private constructor(
-    internal val keys: ArrayList<K>,
-    internal val values: ArrayList<V>,
-    internal val hashes: ArrayList<StarlarkHashValue>,
+    internal val buckets: Vec2<Pair<K, V>, StarlarkHashValue>,
 ) {
     companion object {
-        fun <K, V> new(): VecMap<K, V> = VecMap(ArrayList(), ArrayList(), ArrayList())
+        fun <K, V> new(): VecMap<K, V> = VecMap(Vec2.new())
 
         fun <K, V> default(): VecMap<K, V> = new()
 
-        fun <K, V> withCapacity(n: Int): VecMap<K, V> =
-            VecMap(ArrayList(n), ArrayList(n), ArrayList(n))
+        fun <K, V> withCapacity(n: Int): VecMap<K, V> = VecMap(Vec2.withCapacity(n))
     }
 
     fun reserve(additional: Int) {
-        // No-op in this Kotlin implementation.
+        buckets.reserve(additional)
     }
 
-    fun capacity(): Int = keys.size
+    fun capacity(): Int = buckets.capacity()
 
-    fun len(): Int = keys.size
+    fun len(): Int = buckets.len()
 
-    fun isEmpty(): Boolean = keys.isEmpty()
+    fun isEmpty(): Boolean = buckets.isEmpty()
 
     fun clear() {
-        keys.clear()
-        values.clear()
-        hashes.clear()
+        buckets.clear()
     }
 
     fun getIndexOfHashedRaw(hash: StarlarkHashValue, eq: (K) -> Boolean): Int? {
-        for (i in keys.indices) {
-            if (hashes[i] == hash && eq(keys[i])) return i
+        val hashes = buckets.bbb()
+        val pairs = buckets.aaa()
+        var i = 0
+        while (i < hashes.size) {
+            i = findHashInArray(hashes, hash, i) ?: return null
+            if (eq(pairs[i].first)) return i
+            i += 1
         }
         return null
     }
@@ -71,119 +68,111 @@ internal class VecMap<K, V> private constructor(
     }
 
     fun getIndex(index: Int): Pair<K, V>? {
-        val k = keys.getOrNull(index) ?: return null
-        val v = values.getOrNull(index) ?: return null
-        return Pair(k, v)
+        val (pair, _hash) = buckets.get(index) ?: return null
+        return pair
     }
 
     fun getUnchecked(index: Int): Pair<Hashed<K>, V> {
-        require(index in keys.indices)
-        return Pair(Hashed.newUnchecked(hashes[index], keys[index]), values[index])
+        val (pair, hash) = buckets.getUnchecked(index)
+        return Pair(Hashed.newUnchecked(hash, pair.first), pair.second)
     }
 
-    fun getUncheckedMut(index: Int): Pair<Hashed<K>, V> {
-        require(index in keys.indices)
-        return Pair(Hashed.newUnchecked(hashes[index], keys[index]), values[index])
-    }
+    fun getUncheckedMut(index: Int): Pair<Hashed<K>, V> = getUnchecked(index)
 
     fun insertHashedUniqueUnchecked(key: Hashed<K>, value: V) {
-        hashes.add(key.hash())
-        keys.add(key.intoKey())
-        values.add(value)
+        buckets.push(Pair(key.intoKey(), value), key.hash())
+    }
+
+    /** Replace the value at `index`, keeping the existing key/hash. */
+    fun setValue(index: Int, value: V) {
+        val pairs = buckets.aaaMut()
+        val key = pairs[index].first
+        pairs[index] = Pair(key, value)
+    }
+
+    /** Read the value at `index` without bounds checking — caller must guarantee `index < len()`. */
+    fun valueAt(index: Int): V = buckets.aaa()[index].second
+
+    /** Read the key at `index` without bounds checking. */
+    fun keyAt(index: Int): K = buckets.aaa()[index].first
+
+    /** Read the [Hashed] key at `index` without bounds checking. */
+    fun hashedKeyAt(index: Int): Hashed<K> {
+        val (k, _) = buckets.aaa()[index]
+        val h = buckets.bbb()[index]
+        return Hashed.newUnchecked(h, k)
     }
 
     fun <Q> removeHashedEntry(key: Hashed<Q>): Pair<K, V>? where Q : Equivalent<K> {
         val index = getIndexOfHashed(key) ?: return null
-        val k = keys.removeAt(index)
-        val v = values.removeAt(index)
-        hashes.removeAt(index)
-        return Pair(k, v)
+        val (pair, _) = buckets.remove(index)
+        return pair
     }
 
     fun remove(index: Int): Pair<Hashed<K>, V> {
-        val k = keys.removeAt(index)
-        val v = values.removeAt(index)
-        val h = hashes.removeAt(index)
-        return Pair(Hashed.newUnchecked(h, k), v)
+        val (pair, hash) = buckets.remove(index)
+        return Pair(Hashed.newUnchecked(hash, pair.first), pair.second)
     }
 
     fun pop(): Pair<Hashed<K>, V>? {
-        if (keys.isEmpty()) return null
-        val i = keys.lastIndex
-        val k = keys.removeAt(i)
-        val v = values.removeAt(i)
-        val h = hashes.removeAt(i)
-        return Pair(Hashed.newUnchecked(h, k), v)
+        val (pair, hash) = buckets.pop() ?: return null
+        return Pair(Hashed.newUnchecked(hash, pair.first), pair.second)
     }
 
-    fun values(): Sequence<V> = values.asSequence()
+    fun values(): Sequence<V> = buckets.aaa().asSequence().map { it.second }
 
-    fun valuesMut(): Sequence<V> = values.asSequence()
+    fun valuesMut(): Sequence<V> = values()
 
-    fun keys(): Sequence<K> = keys.asSequence()
+    fun keys(): Sequence<K> = buckets.aaa().asSequence().map { it.first }
 
     fun intoIter(): Iterator<Pair<K, V>> = iter().iterator()
 
-    fun iter(): Sequence<Pair<K, V>> =
-        keys.indices.asSequence().map { i -> Pair(keys[i], values[i]) }
+    fun iter(): Sequence<Pair<K, V>> = buckets.aaa().asSequence()
 
-    fun iterHashed(): Sequence<Pair<Hashed<K>, V>> =
-        keys.indices.asSequence().map { i -> Pair(Hashed.newUnchecked(hashes[i], keys[i]), values[i]) }
+    fun iterHashed(): Sequence<Pair<Hashed<K>, V>> = buckets.iter().map { (pair, hash) ->
+        Pair(Hashed.newUnchecked(hash, pair.first), pair.second)
+    }
 
-    fun intoIterHashed(): Iterator<Pair<Hashed<K>, V>> = iterHashed().iterator()
+    fun intoIterHashed(): Iterator<Pair<Hashed<K>, V>> = buckets.intoIter().asSequence().map { (pair, hash) ->
+        Pair(Hashed.newUnchecked(hash, pair.first), pair.second)
+    }.iterator()
 
-    fun iterMut(): Sequence<Pair<K, V>> = iter()
+    fun iterMut(): Sequence<Pair<K, V>> = buckets.aaaMut().asSequence()
 
-    fun iterMutUnchecked(): Sequence<Pair<K, V>> = iter()
+    fun iterMutUnchecked(): Sequence<Pair<K, V>> = buckets.aaaMut().asSequence()
 
     /** Equal if entries are equal in the iterator order. */
     fun eqOrdered(other: VecMap<K, V>): Boolean {
-        return hashes == other.hashes && keys == other.keys && values == other.values
+        // Compare hashes before keys/values: hash mismatch short-circuits faster than
+        // walking equal pairs. Mirrors vec_map.rs:264.
+        return buckets.bbb() == other.buckets.bbb() && buckets.aaa() == other.buckets.aaa()
     }
 
     /** Hash entries in the iterator order. */
     fun hashOrdered(): Int {
         var result = 1
-        for (i in keys.indices) {
-            result = 31 * result + hashes[i].hashCode()
-            result = 31 * result + (values[i]?.hashCode() ?: 0)
+        for ((hashedKey, value) in iterHashed()) {
+            result = 31 * result + hashedKey.hashCode()
+            result = 31 * result + (value?.hashCode() ?: 0)
         }
         return result
     }
 
     fun reverse() {
-        keys.reverse()
-        values.reverse()
-        hashes.reverse()
+        buckets.aaaMut().reverse()
+        buckets.bbbMut().reverse()
     }
 
     fun retain(f: (K, V) -> Boolean) {
-        var i = 0
-        while (i < keys.size) {
-            if (f(keys[i], values[i])) {
-                i += 1
-            } else {
-                remove(i)
-            }
-        }
+        buckets.retain { pair, _ -> f(pair.first, pair.second) }
     }
 }
 
 internal fun <K : Comparable<K>, V> VecMap<K, V>.sortKeys() {
-    val order = keys.indices.sortedWith(compareBy { keys[it] })
-    val oldKeys = keys.toList()
-    val oldValues = values.toList()
-    val oldHashes = hashes.toList()
-    keys.clear()
-    values.clear()
-    hashes.clear()
-    for (i in order) {
-        keys.add(oldKeys[i])
-        values.add(oldValues[i])
-        hashes.add(oldHashes[i])
-    }
+    buckets.sortBy { (a, _), (b, _) -> a.first.compareTo(b.first) }
 }
 
 internal fun <K : Comparable<K>, V> VecMap<K, V>.isSortedByKey(): Boolean {
-    return keys.asSequence().zipWithNext().all { (left, right) -> left <= right }
+    // Mirrors vec_map.rs:253 self.buckets.aaa().windows(2).all(|w| w[0].0 <= w[1].0)
+    return buckets.aaa().asSequence().windowed(2).all { (a, b) -> a.first <= b.first }
 }

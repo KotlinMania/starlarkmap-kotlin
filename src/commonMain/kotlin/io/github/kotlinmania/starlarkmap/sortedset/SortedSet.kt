@@ -89,7 +89,7 @@ class SortedSet<T> internal constructor(
     fun getIndex(index: Int): T? = inner.getIndex(index)
 
     /** Iterate over the union of two sets. */
-    fun union(other: SortedSet<T>): Sequence<T> =
+    fun union(other: SortedSet<T>): Iterator<T> =
         inner.union(other.inner)
 
     override fun iterator(): Iterator<T> = inner.iterator()

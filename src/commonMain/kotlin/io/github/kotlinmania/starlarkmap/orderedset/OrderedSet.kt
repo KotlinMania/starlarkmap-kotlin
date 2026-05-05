@@ -142,7 +142,7 @@ class OrderedSet<T> internal constructor(
     /**
      * Iterate over the union of two sets.
      */
-    fun union(other: OrderedSet<T>): Sequence<T> =
+    fun union(other: OrderedSet<T>): Iterator<T> =
         inner.union(other.inner)
 
     /**
@@ -169,11 +169,14 @@ class OrderedSet<T> internal constructor(
 
     /**
      * Hash based on ordered iteration of elements.
+     *
+     * Mirrors the Rust impl which calls [Hashed.hash] on each element, writing only the
+     * precomputed hash so the underlying key is never re-hashed after insertion.
      */
     override fun hashCode(): Int {
         var result = 1
-        for (t in iter()) {
-            result = 31 * result + (t?.hashCode() ?: 0)
+        for (h in inner.iterHashed()) {
+            result = 31 * result + h.hashCode()
         }
         return result
     }
