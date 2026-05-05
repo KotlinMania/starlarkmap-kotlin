@@ -96,10 +96,6 @@ The sticky-note version: **"Read the file. Translate it. Don't think about anyth
 
 **Do not delegate translation work to subagents (Agent / Task tool).** Translation happens in the main loop where Sydney can see each edit and correct course immediately.
 
-### 1. No Swarm/Task System
-
-This repo is **not** using the swarm/task-assignment workflow (`tasks.json`). Use directory-level `ast_distance --deep` instead, once `tmp/starlark_map` is populated and `tools/ast_distance` is available.
-
 ### 2. Port-Lint Headers (REQUIRED)
 
 Every Kotlin file MUST start with:
