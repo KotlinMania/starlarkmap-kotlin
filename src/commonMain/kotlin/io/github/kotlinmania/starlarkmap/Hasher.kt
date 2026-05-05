@@ -24,7 +24,7 @@ package io.github.kotlinmania.starlarkmap
  *
  * Starlark relies on stable hashing, and this is the hasher.
  */
-class StarlarkHasher {
+class StarlarkHasher : Hasher {
     companion object {
         /**
          * Creates a new hasher.
@@ -34,50 +34,48 @@ class StarlarkHasher {
         }
     }
 
+    // TODO(nga): `FxHasher64` is endian-dependent, this is not right.
     private val inner: FxHasher64 = FxHasher64()
 
     /**
      * Finish the hash computation and return the result.
      */
-    fun finish(): ULong {
-        return inner.finish()
-    }
-
-    /**
-     * Finish the hash computation and return the lower 32 bits as a [StarlarkHashValue].
-     */
     fun finishSmall(): StarlarkHashValue {
         // NOTE: Here we throw away half the key material we are given,
         // taking only the lower 32 bits.
-        // Not a problem because `DefaultHasher` produces well-swizzled bits.
+        // Not a problem because the default hasher produces well-swizzled bits.
         return StarlarkHashValue.newUnchecked(finish().toUInt())
     }
 
-    fun write(bytes: ByteArray) {
+    override fun finish(): ULong {
+        return inner.finish()
+    }
+
+    override fun write(bytes: ByteArray) {
         inner.write(bytes)
     }
 
-    fun writeU8(i: UByte) {
+    override fun writeU8(i: UByte) {
         inner.writeU8(i)
     }
 
-    fun writeU16(i: UShort) {
+    override fun writeU16(i: UShort) {
         inner.writeU16(i)
     }
 
-    fun writeU32(i: UInt) {
+    override fun writeU32(i: UInt) {
         inner.writeU32(i)
     }
 
-    fun writeU64(i: ULong) {
+    override fun writeU64(i: ULong) {
         inner.writeU64(i)
     }
 
-    fun writeU128(i: U128) {
+    override fun writeU128(i: U128) {
         inner.writeU128(i)
     }
 
-    fun writeUsize(i: ULong) {
+    override fun writeUsize(i: ULong) {
         inner.writeUsize(i)
     }
 }
@@ -85,8 +83,26 @@ class StarlarkHasher {
 /**
  * `BuildHasher` implementation which produces [StarlarkHasher].
  */
-class StarlarkHasherBuilder {
-    fun buildHasher(): StarlarkHasher {
+class StarlarkHasherBuilder : BuildHasher<StarlarkHasher> {
+    /**
+     * Create a new hasher.
+     */
+    override fun buildHasher(): StarlarkHasher {
         return StarlarkHasher()
     }
+}
+
+interface Hasher {
+    fun finish(): ULong
+    fun write(bytes: ByteArray)
+    fun writeU8(i: UByte)
+    fun writeU16(i: UShort)
+    fun writeU32(i: UInt)
+    fun writeU64(i: ULong)
+    fun writeU128(i: U128)
+    fun writeUsize(i: ULong)
+}
+
+interface BuildHasher<H : Hasher> {
+    fun buildHasher(): H
 }

@@ -11,6 +11,7 @@ kotlin-js-store/*
 !kotlin-js-store/wasm/yarn.lock
 .kotlin/
 tmp/starlark_map/
+.cache/
 
 # ast_distance build artifacts (binary committed; cmake build dir regenerated)
 tools/ast_distance/build/
