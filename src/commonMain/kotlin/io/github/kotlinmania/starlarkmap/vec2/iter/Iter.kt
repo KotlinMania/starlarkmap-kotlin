@@ -21,11 +21,11 @@ package io.github.kotlinmania.starlarkmap.vec2.iter
 /**
  * Iterator over [Vec2] elements.
  *
- * Rust uses pointers into the two backing slices. In Kotlin, [Vec2] uses two parallel
- * lists, so this iterator tracks an index range into both lists.
+ * This iterator tracks an index range into both parallel lists, supporting
+ * bidirectional iteration.
  *
- * Implements [Iterator] with `len()`, `sizeHint()`, and `nextBack()` helpers mirroring
- * the Rust API surface.
+ * In addition to standard [Iterator] operations, provides [len], [sizeHint],
+ * and [nextBack] for reverse iteration.
  */
 class Iter<A, B>(
     private val aaa: List<A>,
@@ -64,12 +64,11 @@ class Iter<A, B>(
 /**
  * Iterator which consumes the [Vec2].
  *
- * Rust yields owned `(A, B)` pairs and deallocates the backing allocation on drop.
- * In Kotlin there is no manual deallocation, so this iterator only mirrors the
- * iteration behaviour.
+ * Yields pairs of elements from both parallel lists. The iterator consumes
+ * the entire range of elements, supporting bidirectional iteration.
  *
- * Implements [Iterator] with `len()`, `sizeHint()`, and `nextBack()` helpers mirroring
- * the Rust API surface.
+ * In addition to standard [Iterator] operations, provides [len], [sizeHint],
+ * and [nextBack] for reverse iteration.
  */
 class IntoIter<A, B>(
     private val aaa: List<A>,
