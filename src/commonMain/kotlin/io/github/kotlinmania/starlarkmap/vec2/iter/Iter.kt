@@ -21,25 +21,25 @@ package io.github.kotlinmania.starlarkmap.vec2.iter
 /**
  * Iterator over [Vec2] elements.
  *
- * Rust uses pointers into the two backing slices. In Kotlin, [Vec2] uses two parallel
- * lists, so this iterator tracks an index range into both lists.
+ * This iterator tracks an index range into both parallel lists, supporting
+ * bidirectional iteration.
  *
- * Implements [Iterator] with `len()`, `sizeHint()`, and `nextBack()` helpers mirroring
- * the Rust API surface.
+ * In addition to standard [Iterator] operations, provides [len], [sizeHint],
+ * and [nextBack] for reverse iteration.
  */
 class Iter<A, B>(
-    private val aaa: List<A>,
-    private val bbb: List<B>,
+    private val firstElements: List<A>,
+    private val secondElements: List<B>,
 ) : Iterator<Pair<A, B>> {
     private var front: Int = 0
-    private var back: Int = aaa.size
+    private var back: Int = firstElements.size
 
     override fun hasNext(): Boolean = front < back
 
     override fun next(): Pair<A, B> {
         if (front >= back) throw NoSuchElementException()
-        val a = aaa[front]
-        val b = bbb[front]
+        val a = firstElements[front]
+        val b = secondElements[front]
         front++
         return Pair(a, b)
     }
@@ -48,7 +48,7 @@ class Iter<A, B>(
     fun nextBack(): Pair<A, B>? {
         if (front >= back) return null
         back--
-        return Pair(aaa[back], bbb[back])
+        return Pair(firstElements[back], secondElements[back])
     }
 
     /** Returns the number of remaining elements. */
@@ -64,26 +64,25 @@ class Iter<A, B>(
 /**
  * Iterator which consumes the [Vec2].
  *
- * Rust yields owned `(A, B)` pairs and deallocates the backing allocation on drop.
- * In Kotlin there is no manual deallocation, so this iterator only mirrors the
- * iteration behaviour.
+ * Yields pairs of elements from both parallel lists. The iterator consumes
+ * the entire range of elements, supporting bidirectional iteration.
  *
- * Implements [Iterator] with `len()`, `sizeHint()`, and `nextBack()` helpers mirroring
- * the Rust API surface.
+ * In addition to standard [Iterator] operations, provides [len], [sizeHint],
+ * and [nextBack] for reverse iteration.
  */
 class IntoIter<A, B>(
-    private val aaa: List<A>,
-    private val bbb: List<B>,
+    private val firstElements: List<A>,
+    private val secondElements: List<B>,
 ) : Iterator<Pair<A, B>> {
     private var front: Int = 0
-    private var back: Int = bbb.size
+    private var back: Int = secondElements.size
 
     override fun hasNext(): Boolean = front < back
 
     override fun next(): Pair<A, B> {
         if (front >= back) throw NoSuchElementException()
-        val a = aaa[front]
-        val b = bbb[front]
+        val a = firstElements[front]
+        val b = secondElements[front]
         front++
         return Pair(a, b)
     }
@@ -93,8 +92,8 @@ class IntoIter<A, B>(
         if (front >= back) return null
         back--
         val newLen = len()
-        val a = aaa[front + newLen]
-        val b = bbb[back]
+        val a = firstElements[front + newLen]
+        val b = secondElements[back]
         return Pair(a, b)
     }
 
