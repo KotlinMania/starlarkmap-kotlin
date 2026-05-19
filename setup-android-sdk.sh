@@ -14,25 +14,36 @@
 # The .android-sdk/ tree is gitignored. Re-run this script after a clean clone
 # or when the SDK layout drifts. It is idempotent - completed steps are skipped.
 #
-# Override defaults via env vars:
-#   CMDLINETOOLS_REV - Google's commandlinetools build number (default below).
-#   COMPILE_SDK       - Android API level to install (default: read from build.gradle.kts).
-#   BUILD_TOOLS       - Build-tools version to install (default below).
+# All version pins (cmdline-tools revision, compileSdk, build-tools) are baked
+# in by the build_surface generator from scaffold/android-sdk.json - the single
+# workspace-level source of truth. There are no environment-variable overrides
+# and nothing to edit here: to change a version, edit that JSON and re-scaffold.
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 SDK_DIR="$REPO_ROOT/.android-sdk"
 
-# Pin a known-good cmdline-tools revision. Bump when Google rotates.
-# Source: https://developer.android.com/studio (look for "Command line tools only").
-CMDLINETOOLS_REV="${CMDLINETOOLS_REV:-14742923}"
+# Idempotency fast-path. A completed run drops .install-complete inside the
+# (gitignored) SDK tree. On a marked SDK, refresh local.properties so it always
+# points at this repo's own SDK - never a sibling's - then exit. This is the
+# installer declining to redo finished work, not the build skipping Android:
+# the Android compile still runs in full afterwards. build.gradle.kts invokes
+# this script at configuration time on every build, so the fast path keeps that
+# invocation cheap once the SDK is installed.
+INSTALL_MARKER="$SDK_DIR/.install-complete"
+if [ -f "$INSTALL_MARKER" ] && [ -x "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" ]; then
+    echo "sdk.dir=$SDK_DIR" > "$REPO_ROOT/local.properties"
+    echo "setup-android-sdk: SDK already installed at $SDK_DIR"
+    exit 0
+fi
 
-# compileSdk + minSdk live in build.gradle.kts. Default to compileSdk = 34
-# (matches the existing kotlinmania convention); operator can override.
-COMPILE_SDK="${COMPILE_SDK:-34}"
-BUILD_TOOLS="${BUILD_TOOLS:-34.0.0}"
-MAX_LICENSE_PROMPTS="${MAX_LICENSE_PROMPTS:-200}"
+# Version pins, baked in from scaffold/android-sdk.json by the build_surface
+# generator. These values are uniform across every *-kotlin repo; the JSON is
+# the one place they are defined.
+CMDLINETOOLS_REV="14742923"
+COMPILE_SDK="34"
+BUILD_TOOLS="36.0.0"
 
 case "$(uname -s)" in
     Darwin*) OS="mac" ;;
@@ -52,10 +63,7 @@ if [ ! -x "$SDK_DIR/cmdline-tools/latest/bin/sdkmanager" ]; then
     mkdir -p "$SDK_DIR/cmdline-tools"
     TMPDIR="$(mktemp -d)"
     trap 'rm -rf "$TMPDIR"' EXIT
-    if ! curl -fL --progress-bar "$URL" -o "$TMPDIR/$ZIP"; then
-        echo "setup-android-sdk: failed to download Android command-line tools from $URL" >&2
-        exit 1
-    fi
+    curl -fL --progress-bar "$URL" -o "$TMPDIR/$ZIP"
     unzip -q "$TMPDIR/$ZIP" -d "$TMPDIR"
     # Google's zip extracts to a top-level "cmdline-tools/" directory whose
     # contents need to live at <sdk>/cmdline-tools/latest/ for sdkmanager to
@@ -82,7 +90,7 @@ echo "setup-android-sdk: accepting licenses"
 # exits cleanly, so the pipeline returns 0 when sdkmanager succeeds.
 # 200 answers is far more than the ~10 licenses sdkmanager actually prompts
 # for (header + per-package), so the stream never runs short.
-printf 'y\n%.0s' $(seq 1 "$MAX_LICENSE_PROMPTS") | "$SDKMANAGER" --sdk_root="$SDK_DIR" --licenses > /dev/null
+printf 'y\n%.0s' {1..200} | "$SDKMANAGER" --sdk_root="$SDK_DIR" --licenses > /dev/null
 
 # ---------------------------------------------------------------------------
 # Step 3: install platform + build-tools
@@ -92,19 +100,19 @@ echo "setup-android-sdk: installing platform-tools, android-${COMPILE_SDK}, buil
 # output to a log file so callers redirecting through pagers / tail are not
 # confused by the live progress, and so success/failure is auditable later.
 LOGFILE="$REPO_ROOT/.android-sdk/sdkmanager-install.log"
-if ! "$SDKMANAGER" --sdk_root="$SDK_DIR" \
+"$SDKMANAGER" --sdk_root="$SDK_DIR" \
     "platform-tools" \
     "platforms;android-${COMPILE_SDK}" \
-    "build-tools;${BUILD_TOOLS}" > "$LOGFILE" 2>&1; then
-    echo "setup-android-sdk: SDK installation failed. Check $LOGFILE for details." >&2
-    exit 1
-fi
+    "build-tools;${BUILD_TOOLS}" > "$LOGFILE" 2>&1
 echo "setup-android-sdk: install log at $LOGFILE"
 
 # ---------------------------------------------------------------------------
 # Step 4: point local.properties at the project-local SDK
 # ---------------------------------------------------------------------------
 echo "sdk.dir=$SDK_DIR" > "$REPO_ROOT/local.properties"
+
+# Mark the install complete so future runs take the fast path above.
+touch "$INSTALL_MARKER"
 
 echo
 echo "setup-android-sdk: done"
