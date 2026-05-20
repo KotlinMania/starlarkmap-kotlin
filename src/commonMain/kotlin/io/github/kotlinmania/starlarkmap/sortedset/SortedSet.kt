@@ -1,4 +1,4 @@
-// port-lint: source src/sortedSet.rs
+// port-lint: source sorted_set.rs
 package io.github.kotlinmania.starlarkmap.sortedset
 
 /*

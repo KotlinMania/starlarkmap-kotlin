@@ -1,4 +1,4 @@
-// port-lint: source src/sortedVec.rs
+// port-lint: source sorted_vec.rs
 package io.github.kotlinmania.starlarkmap.sortedvec
 
 /*

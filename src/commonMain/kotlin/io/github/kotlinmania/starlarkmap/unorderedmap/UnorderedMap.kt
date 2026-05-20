@@ -1,4 +1,4 @@
-// port-lint: source src/unorderedMap.rs
+// port-lint: source unordered_map.rs
 package io.github.kotlinmania.starlarkmap.unorderedmap
 
 /*

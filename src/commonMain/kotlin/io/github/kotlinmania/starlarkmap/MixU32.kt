@@ -1,4 +1,4 @@
-// port-lint: source src/mixU32.rs
+// port-lint: source mix_u32.rs
 package io.github.kotlinmania.starlarkmap
 
 /*
@@ -22,4 +22,3 @@ package io.github.kotlinmania.starlarkmap
 internal fun mixU32(n: UInt): ULong {
     return n.toULong() * 0x9e3779b97f4a7c15UL
 }
-

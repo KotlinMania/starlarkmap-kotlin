@@ -1,4 +1,4 @@
-// port-lint: source tests:src/vec2.rs
+// port-lint: tests vec2.rs
 package io.github.kotlinmania.starlarkmap.vec2
 
 /*

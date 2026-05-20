@@ -123,7 +123,7 @@ internal class VecMap<K, V> private constructor(
     fun values(): Sequence<V> = buckets.firstElements().asSequence().map { it.second }
 
     /**
-     * Porting compatibility with Rust's `values_mut`.
+     * Mutable values view.
      *
      * Kotlin does not have Rust-style mutable reference iterators, so this method
      * intentionally returns the same sequence as [values].
