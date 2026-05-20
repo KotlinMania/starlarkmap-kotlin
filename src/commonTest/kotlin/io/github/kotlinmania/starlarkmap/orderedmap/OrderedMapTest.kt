@@ -1,4 +1,4 @@
-// port-lint: source tests:src/orderedMap.rs
+// port-lint: tests ordered_map.rs
 package io.github.kotlinmania.starlarkmap.orderedmap
 
 /*

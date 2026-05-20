@@ -28,8 +28,7 @@ import io.github.kotlinmania.starlarkmap.smallmap.sortKeys
 /**
  * A set with deterministic iteration order.
  *
- * Mirrors upstream `pub struct SmallSet<T>(SmallMap<T, ()>);` — a tuple struct
- * wrapping [SmallMap] with `Unit` as the value type.
+ * Wraps [SmallMap] with `Unit` as the value type.
  */
 class SmallSet<T> internal constructor(
     internal val inner: SmallMap<T, Unit>,
@@ -243,8 +242,8 @@ class SmallSet<T> internal constructor(
         if (this === other) return true
         if (other !is SmallSet<*>) return false
         if (inner.len() != other.inner.len()) return false
-        // Mirrors upstream small_set.rs:63-72 — set equality by membership of
-        // each element from this in `other`. Compare via [Hashed.equals],
+        // Set equality is membership equality regardless of iteration order.
+        // Compare via [Hashed.equals],
         // which checks hash and key equality without needing a T binding.
         val otherHashed = other.iterHashed().toSet()
         for (h in iterHashed()) {

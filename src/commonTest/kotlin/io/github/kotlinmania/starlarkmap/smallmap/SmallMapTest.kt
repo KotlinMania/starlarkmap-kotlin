@@ -1,4 +1,4 @@
-// port-lint: source tests:small_map.rs
+// port-lint: tests small_map.rs
 package io.github.kotlinmania.starlarkmap.smallmap
 
 /*
