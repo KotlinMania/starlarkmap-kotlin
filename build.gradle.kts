@@ -192,10 +192,18 @@ kotlin {
         binaries.framework { baseName = "StarlarkMap"; xcf.add(this) }
     }
     iosSimulatorArm64 {
-        binaries.framework { baseName = "StarlarkMap"; xcf.add(this) }
+        binaries.framework {
+            baseName = "StarlarkMap"
+            isStatic = true
+            xcf.add(this)
+        }
     }
     iosX64 {
-        binaries.framework { baseName = "StarlarkMap"; xcf.add(this) }
+        binaries.framework {
+            baseName = "StarlarkMap"
+            isStatic = true
+            xcf.add(this)
+        }
     }
 
     tvosArm64 {
