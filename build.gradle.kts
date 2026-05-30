@@ -40,11 +40,6 @@ val frameworkName = providers.gradleProperty("project.frameworkName").getOrElse(
 val projectNamespace = providers.gradleProperty("project.namespace").getOrElse("io.github.kotlinmania")
 val kotlinVersion = providers.gradleProperty("versions.kotlin").getOrElse("2.3.21")
 
-// Gate Tier 3 targets behind opt-in properties — excluded from default build on CI.
-// Set build.androidNative=true / build.intelSimulators=true in gradle.properties or -P to include.
-val buildAndroidNative = providers.gradleProperty("build.androidNative").orNull?.toBoolean() ?: false
-val buildIntelSimulators = providers.gradleProperty("build.intelSimulators").orNull?.toBoolean() ?: false
-
 // Opt-ins shared between the top-level compilerOptions and the codeqlCompileJvm kotlinc invocation.
 val commonOptIns =
     listOf(
@@ -226,7 +221,9 @@ val jvmToolchainVersion = providers.gradleProperty("jvm.toolchain").getOrElse("2
 //   per AGENTS.md §5.5.1, effective 2026-05-24). Upstream KGP still ships it as
 //   Tier 2 — this is a deliberate product decision, not a framework deprecation.
 // Deprecated by KGP since 2.3.20 (never re-add): macosX64, tvosX64, watchosX64.
-// Tier 3 targets (Android NDK, iosX64): gated behind build properties above.
+// Every other target is built unconditionally — KotlinMania supports the full
+//   target surface, so there are NO opt-in build gates. The build gate is the
+//   contract that forces every configured target to compile.
 // ============================================================================
 kotlin {
     jvmToolchain(jvmToolchainVersion)
@@ -267,23 +264,20 @@ kotlin {
     watchosDeviceArm64 { addToXcf(deploymentTarget = "7.0") }
     watchosSimulatorArm64 { addToXcf(deploymentTarget = "7.0") }
 
-    // iosX64: Tier 3 — Intel Mac simulator only, excluded by default
-    if (buildIntelSimulators) {
-        iosX64 { addToXcf(static = true, deploymentTarget = "14.0") }
-    }
+    // iosX64: Intel Mac simulator. Tier 3 in Kotlin/Native but NOT deprecated —
+    // Apple still ships x86_64 iOS simulator runtimes, so it is always built.
+    iosX64 { addToXcf(static = true, deploymentTarget = "14.0") }
 
     // Other native — Tier 1/2
     linuxX64()
     linuxArm64()
     mingwX64()
 
-    // Android NDK — Tier 3, excluded by default
-    if (buildAndroidNative) {
-        androidNativeArm32()
-        androidNativeArm64()
-        androidNativeX86()
-        androidNativeX64()
-    }
+    // Android NDK — always built (full target surface, no opt-in gate).
+    androidNativeArm32()
+    androidNativeArm64()
+    androidNativeX86()
+    androidNativeX64()
 
     // Web
     js {
@@ -670,25 +664,28 @@ tasks.matching { it.name == "embedSwiftExportForXcode" }.configureEach {
 // tasks.matching returns a live TaskCollection — no afterEvaluate needed.
 // KMP tasks registered after kotlin { } are captured automatically.
 // ============================================================================
+// Every configured native target, unconditionally. This is the audit contract —
+// it must mirror the kotlin { } target block exactly. watchosArm32 is the only
+// retired native target (see §5.5.1); everything else MUST build.
 val nativeTargetNames =
-    buildList {
-        if (buildAndroidNative) addAll(listOf("androidNativeArm32", "androidNativeArm64", "androidNativeX64", "androidNativeX86"))
-        addAll(listOf("iosArm64", "iosSimulatorArm64"))
-        if (buildIntelSimulators) add("iosX64")
-        addAll(
-            listOf(
-                "linuxArm64",
-                "linuxX64",
-                "macosArm64",
-                "mingwX64",
-                "tvosArm64",
-                "tvosSimulatorArm64",
-                "watchosArm64",
-                "watchosDeviceArm64",
-                "watchosSimulatorArm64",
-            ),
-        )
-    }
+    listOf(
+        "androidNativeArm32",
+        "androidNativeArm64",
+        "androidNativeX64",
+        "androidNativeX86",
+        "iosArm64",
+        "iosSimulatorArm64",
+        "iosX64",
+        "linuxArm64",
+        "linuxX64",
+        "macosArm64",
+        "mingwX64",
+        "tvosArm64",
+        "tvosSimulatorArm64",
+        "watchosArm64",
+        "watchosDeviceArm64",
+        "watchosSimulatorArm64",
+    )
 
 val fullTargetBuildTaskNames =
     buildSet {
