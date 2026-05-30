@@ -1,5 +1,9 @@
 // port-lint: source unordered_map.rs
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package io.github.kotlinmania.starlarkmap.unorderedmap
+
+import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -29,6 +33,8 @@ import io.github.kotlinmania.starlarkmap.StarlarkHashValue
  *
  * In Kotlin, we import a [HashMap] which provides the same semantics.
  */
+// generic by design: order-hiding map container; key/value params are the public contract.
+@HiddenFromObjC
 class UnorderedMap<K, V> internal constructor(
     internal val table: HashMap<K, V>,
 ) {
@@ -178,7 +184,7 @@ class UnorderedMap<K, V> internal constructor(
     /**
      * Index by key. Throws if key is not found.
      */
-    operator fun get(key: K, default: Nothing? = null): V =
+    operator fun get(key: K, defaultValue: Nothing? = null): V =
         table[key] ?: throw NoSuchElementException("key not found: $key")
 
     /**
@@ -219,30 +225,34 @@ fun <K : Comparable<K>, V> UnorderedMap<K, V>.entriesSorted(): List<Pair<K, V>> 
 /**
  * Reference to an entry in a [UnorderedMap].
  */
+// generic by design: map entry handle; key/value params are the public contract.
+@HiddenFromObjC
 sealed class Entry<K, V> {
     /** Occupied entry. */
+    @HiddenFromObjC
     class Occupied<K, V>(val entry: OccupiedEntry<K, V>) : Entry<K, V>()
 
     /** Vacant entry. */
+    @HiddenFromObjC
     class Vacant<K, V>(val entry: VacantEntry<K, V>) : Entry<K, V>()
 
     /** Insert a value if vacant, or return the existing value. */
-    fun orInsert(default: V): V {
+    fun orInsert(defaultValue: V): V {
         return when (this) {
             is Occupied -> entry.get()
             is Vacant -> {
-                entry.insert(default)
-                default
+                entry.insert(defaultValue)
+                defaultValue
             }
         }
     }
 
     /** Insert a value computed by a function if vacant, or return the existing value. */
-    fun orInsertWith(default: () -> V): V {
+    fun orInsertWith(defaultValue: () -> V): V {
         return when (this) {
             is Occupied -> entry.get()
             is Vacant -> {
-                val v = default()
+                val v = defaultValue()
                 entry.insert(v)
                 v
             }
@@ -253,6 +263,8 @@ sealed class Entry<K, V> {
 /**
  * Reference to an occupied entry in a [UnorderedMap].
  */
+// generic by design: occupied map entry; key/value params are the public contract.
+@HiddenFromObjC
 class OccupiedEntry<K, V>(
     private val map: UnorderedMap<K, V>,
     private val key: K,
@@ -274,6 +286,8 @@ class OccupiedEntry<K, V>(
 /**
  * Reference to a vacant entry in a [UnorderedMap].
  */
+// generic by design: vacant map entry; key/value params are the public contract.
+@HiddenFromObjC
 class VacantEntry<K, V>(
     private val map: UnorderedMap<K, V>,
     private val key: K,
@@ -287,6 +301,8 @@ class VacantEntry<K, V>(
 /**
  * Builder for [RawEntryMut].
  */
+// generic by design: raw entry builder; key/value params are the public contract.
+@HiddenFromObjC
 class RawEntryBuilderMut<K, V>(
     private val map: UnorderedMap<K, V>,
 ) {
@@ -324,16 +340,22 @@ class RawEntryBuilderMut<K, V>(
 /**
  * Raw entry in a [UnorderedMap].
  */
+// generic by design: raw entry handle; key/value params are the public contract.
+@HiddenFromObjC
 sealed class RawEntryMut<K, V> {
     /** Occupied entry. */
+    @HiddenFromObjC
     class Occupied<K, V>(val entry: RawOccupiedEntryMut<K, V>) : RawEntryMut<K, V>()
     /** Vacant entry. */
+    @HiddenFromObjC
     class Vacant<K, V>(val entry: RawVacantEntryMut<K, V>) : RawEntryMut<K, V>()
 }
 
 /**
  * Reference to an occupied raw entry in a [UnorderedMap].
  */
+// generic by design: occupied raw entry; key/value params are the public contract.
+@HiddenFromObjC
 class RawOccupiedEntryMut<K, V>(
     private val map: UnorderedMap<K, V>,
     private var key: K,
@@ -370,6 +392,8 @@ class RawOccupiedEntryMut<K, V>(
 /**
  * Reference to a vacant raw entry in a [UnorderedMap].
  */
+// generic by design: vacant raw entry; key/value params are the public contract.
+@HiddenFromObjC
 class RawVacantEntryMut<K, V>(
     private val map: UnorderedMap<K, V>,
 ) {

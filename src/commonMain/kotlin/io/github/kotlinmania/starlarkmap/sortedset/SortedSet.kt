@@ -1,5 +1,9 @@
 // port-lint: source sorted_set.rs
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package io.github.kotlinmania.starlarkmap.sortedset
+
+import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -29,6 +33,8 @@ import io.github.kotlinmania.starlarkmap.sortedvec.SortedVec
  * An immutable [SmallSet] with values guaranteed to be sorted.
  *
  */
+// generic by design: sorted set container; element param is the public contract.
+@HiddenFromObjC
 class SortedSet<T> internal constructor(
     private val inner: OrderedSet<T>,
 ) : Iterable<T> {
