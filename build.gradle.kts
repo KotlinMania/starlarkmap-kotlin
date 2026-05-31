@@ -349,6 +349,8 @@ rootProject.extensions.configure<YarnRootExtension>("kotlinYarn") {
     resolution("**/socket.io-parser", "4.2.6")
     resolution("ws", "8.20.1")
     resolution("**/ws", "8.20.1")
+    resolution("tmp", "0.2.6")
+    resolution("**/tmp", "0.2.6")
 }
 
 
@@ -357,7 +359,7 @@ val patchedKarmaWebpackPackage = rootProject.layout.projectDirectory.dir("gradle
 rootProject.extensions.configure<NodeJsRootExtension>("kotlinNodeJs") {
     versions.webpack.version = "5.106.2"
     versions.webpackCli.version = "7.0.2"
-    versions.karma.version = "npm:karma-maintained@6.4.7"
+    versions.karma.version = "npm:karma-maintained@6.4.8"
     versions.karmaWebpack.version = "file:$patchedKarmaWebpackPackage"
     versions.mocha.version = "12.0.0-beta-10"
     versions.kotlinWebHelpers.version = "3.1.0"
