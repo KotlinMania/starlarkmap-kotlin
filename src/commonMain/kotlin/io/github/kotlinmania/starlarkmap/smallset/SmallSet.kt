@@ -1,5 +1,9 @@
 // port-lint: source small_set.rs
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package io.github.kotlinmania.starlarkmap.smallset
+
+import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -30,6 +34,8 @@ import io.github.kotlinmania.starlarkmap.smallmap.sortKeys
  *
  * Wraps [SmallMap] with `Unit` as the value type.
  */
+// generic by design: order-preserving set container; element param is the public contract.
+@HiddenFromObjC
 class SmallSet<T> internal constructor(
     internal val inner: SmallMap<T, Unit>,
 ) {
@@ -265,6 +271,8 @@ class SmallSet<T> internal constructor(
 }
 
 /** Iterator over the difference of two sets. */
+// generic by design: set-difference iterator; element param is the public contract.
+@HiddenFromObjC
 class Difference<T> internal constructor(
     private val iter: Iterator<T>,
     private val source: SmallSet<T>,
@@ -310,6 +318,8 @@ class Difference<T> internal constructor(
 }
 
 /** Iterator over a union of two sets. */
+// generic by design: set-union iterator; element param is the public contract.
+@HiddenFromObjC
 class Union<T> internal constructor(
     private val first: Iterator<T>,
     private val second: Difference<T>,

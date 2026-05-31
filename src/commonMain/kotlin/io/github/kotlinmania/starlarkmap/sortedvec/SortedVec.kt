@@ -1,5 +1,9 @@
 // port-lint: source sorted_vec.rs
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package io.github.kotlinmania.starlarkmap.sortedvec
+
+import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -23,6 +27,8 @@ package io.github.kotlinmania.starlarkmap.sortedvec
  * Type which enforces that its elements are sorted. That's it.
  *
  */
+// generic by design: sorted-invariant vector; element param is the public contract.
+@HiddenFromObjC
 class SortedVec<T> private constructor(
     private val vec: MutableList<T>,
 ) : Iterable<T> {
