@@ -1,5 +1,9 @@
 // port-lint: source vec2.rs
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package io.github.kotlinmania.starlarkmap.vec2
+
+import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -28,6 +32,8 @@ import io.github.kotlinmania.starlarkmap.sorting.insertion.sliceSwapShift
  * Kotlin commonMain does not provide low-level allocation APIs, so this port preserves the
  * same observable behaviour using two parallel [ArrayList]s.
  */
+// generic by design: struct-of-arrays pair vector; element params are the public contract.
+@HiddenFromObjC
 class Vec2<A, B> private constructor(
     private val a: ArrayList<A>,
     private val b: ArrayList<B>,

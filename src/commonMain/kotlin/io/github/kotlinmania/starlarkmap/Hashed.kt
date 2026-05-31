@@ -1,5 +1,9 @@
 // port-lint: source hashed.rs
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package io.github.kotlinmania.starlarkmap
+
+import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -21,6 +25,8 @@ package io.github.kotlinmania.starlarkmap
 /**
  * A key and its hash.
  */
+// generic by design: hash-cached key wrapper; type param is the public contract.
+@HiddenFromObjC
 class Hashed<K> private constructor(
     internal val hash: StarlarkHashValue,
     internal val key: K,

@@ -1,5 +1,9 @@
 // port-lint: source unordered_set.rs
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package io.github.kotlinmania.starlarkmap.unorderedset
+
+import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -33,6 +37,8 @@ import io.github.kotlinmania.starlarkmap.unorderedmap.UnorderedMap
  *
  * In Kotlin, we wrap [UnorderedMap]<T, [Unit]> to maintain the same structure.
  */
+// generic by design: order-hiding set container; element param is the public contract.
+@HiddenFromObjC
 class UnorderedSet<T> internal constructor(
     private val map: UnorderedMap<T, Unit>,
 ) {
@@ -117,6 +123,8 @@ fun <T : Comparable<T>> UnorderedSet<T>.entriesSorted(): List<T> {
 /**
  * Builder for [RawEntryMut].
  */
+// generic by design: raw set-entry builder; element param is the public contract.
+@HiddenFromObjC
 class RawEntryBuilderMut<T>(
     private val entry: MapRawEntryBuilderMut<T, Unit>,
 ) {
@@ -153,16 +161,22 @@ class RawEntryBuilderMut<T>(
 /**
  * Reference to an entry in a [UnorderedSet].
  */
+// generic by design: raw set-entry handle; element param is the public contract.
+@HiddenFromObjC
 sealed class RawEntryMut<T> {
     /** Occupied entry. */
+    @HiddenFromObjC
     class Occupied<T>(val entry: RawOccupiedEntryMut<T>) : RawEntryMut<T>()
     /** Vacant entry. */
+    @HiddenFromObjC
     class Vacant<T>(val entry: RawVacantEntryMut<T>) : RawEntryMut<T>()
 }
 
 /**
  * Reference to an occupied entry in a [UnorderedSet].
  */
+// generic by design: occupied raw set-entry; element param is the public contract.
+@HiddenFromObjC
 class RawOccupiedEntryMut<T>(
     private val entry: MapRawOccupiedEntryMut<T, Unit>,
 ) {
@@ -176,6 +190,8 @@ class RawOccupiedEntryMut<T>(
 /**
  * Reference to a vacant entry in a [UnorderedSet].
  */
+// generic by design: vacant raw set-entry; element param is the public contract.
+@HiddenFromObjC
 class RawVacantEntryMut<T>(
     private val entry: MapRawVacantEntryMut<T, Unit>,
 ) {

@@ -1,5 +1,9 @@
 // port-lint: source hasher.rs
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package io.github.kotlinmania.starlarkmap
+
+import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -83,6 +87,7 @@ class StarlarkHasher : Hasher {
 /**
  * `BuildHasher` implementation which produces [StarlarkHasher].
  */
+@HiddenFromObjC
 class StarlarkHasherBuilder : BuildHasher<StarlarkHasher> {
     /**
      * Create a new hasher.
@@ -103,6 +108,8 @@ interface Hasher {
     fun writeUsize(i: ULong)
 }
 
+// generic by design: builds hashers parameterized by hasher type.
+@HiddenFromObjC
 interface BuildHasher<H : Hasher> {
     fun buildHasher(): H
 }
