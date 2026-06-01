@@ -1,5 +1,9 @@
 // port-lint: source small_map.rs
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package io.github.kotlinmania.starlarkmap.smallmap
+
+import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -40,6 +44,8 @@ import io.github.kotlinmania.starlarkmap.vecmap.sortKeys as vecMapSortKeys
  */
 private const val NO_INDEX_THRESHOLD: Int = 16
 
+// generic by design: full map entry record; key/value params are the public contract.
+@HiddenFromObjC
 data class SmallMapFullEntry<K, V>(
     val index: Int,
     val key: K,
@@ -49,6 +55,8 @@ data class SmallMapFullEntry<K, V>(
 /**
  * A map with deterministic iteration order.
  */
+// generic by design: order-preserving map container; key/value params are the public contract.
+@HiddenFromObjC
 class SmallMap<K, V> internal constructor(
     internal val entries: VecMap<K, V>,
     /**
@@ -500,6 +508,8 @@ private fun formatDebug(value: Any?): String = when (value) {
 }
 
 /** Reference to the actual entry in the map. */
+// generic by design: occupied map entry; key/value params are the public contract.
+@HiddenFromObjC
 class OccupiedEntry<K, V> internal constructor(
     private val map: SmallMap<K, V>,
     private val index: Int,
@@ -524,6 +534,8 @@ class OccupiedEntry<K, V> internal constructor(
 }
 
 /** Reference to a vacant entry in the map. */
+// generic by design: vacant map entry; key/value params are the public contract.
+@HiddenFromObjC
 class VacantEntry<K, V> internal constructor(
     private val map: SmallMap<K, V>,
     private val keyHashed: Hashed<K>,
@@ -539,11 +551,15 @@ class VacantEntry<K, V> internal constructor(
 }
 
 /** Occupied or vacant entry. */
+// generic by design: map entry handle; key/value params are the public contract.
+@HiddenFromObjC
 sealed class Entry<K, V> {
     /** Occupied entry. */
+    @HiddenFromObjC
     class Occupied<K, V>(val entry: OccupiedEntry<K, V>) : Entry<K, V>()
 
     /** No entry for given key. */
+    @HiddenFromObjC
     class Vacant<K, V>(val entry: VacantEntry<K, V>) : Entry<K, V>()
 
     /** Key for this entry. */
@@ -553,12 +569,12 @@ sealed class Entry<K, V> {
     }
 
     /** Insert if vacant, returning the existing or inserted value. */
-    fun orInsert(default: V): V = orInsertWith { default }
+    fun orInsert(defaultValue: V): V = orInsertWith { defaultValue }
 
     /** Insert if vacant, returning the existing or inserted value. */
-    fun orInsertWith(default: () -> V): V = when (this) {
+    fun orInsertWith(defaultValue: () -> V): V = when (this) {
         is Occupied -> entry.get()
-        is Vacant -> entry.insert(default())
+        is Vacant -> entry.insert(defaultValue())
     }
 
     /** Modify if present. Returns this entry. */
@@ -577,6 +593,8 @@ fun <K : Comparable<K>, V> SmallMap<K, V>.sortKeys() {
     rebuildIndex()
 }
 
+// generic by design: mutable value reference; value param is the public contract.
+@HiddenFromObjC
 class MutableValueRef<V>(
     get: () -> V,
     set: (V) -> Unit,

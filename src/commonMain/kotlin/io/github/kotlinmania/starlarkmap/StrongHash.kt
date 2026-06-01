@@ -1,5 +1,9 @@
 // port-lint: source strong_hash (external crate)
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package io.github.kotlinmania.starlarkmap
+
+import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -22,6 +26,10 @@ package io.github.kotlinmania.starlarkmap
  * A trait similar to hashing, but with the expectation that the hash produced should be as
  * perturbed as possible.
  */
+// SAM by design: its generated constructor takes a `(StarlarkHasher) -> Unit` closure, which the
+// Kotlin/Native Swift-export cache builder cannot lower. Hidden from the Swift bridge; Kotlin
+// implementors are unaffected.
+@HiddenFromObjC
 fun interface StrongHash {
     fun strongHash(state: StarlarkHasher)
 }

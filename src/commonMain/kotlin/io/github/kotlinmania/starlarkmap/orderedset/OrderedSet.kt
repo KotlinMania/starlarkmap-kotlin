@@ -1,5 +1,9 @@
 // port-lint: source ordered_set.rs
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package io.github.kotlinmania.starlarkmap.orderedset
+
+import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -30,6 +34,8 @@ import io.github.kotlinmania.starlarkmap.smallset.sort
  * Two [OrderedSet]s are equal only when they contain the same elements
  * in the same iteration order.
  */
+// generic by design: insertion-ordered set container; element param is the public contract.
+@HiddenFromObjC
 class OrderedSet<T> internal constructor(
     internal val inner: SmallSet<T>,
 ) : Iterable<T> {
@@ -189,6 +195,8 @@ class OrderedSet<T> internal constructor(
 /**
  * Error returned by [OrderedSet.tryInsert] when the element is already present.
  */
+// generic by design: try-insert error carrying the rejected element.
+@HiddenFromObjC
 class OccupiedError<T>(
     /** The value that was not inserted. */
     val value: T,
