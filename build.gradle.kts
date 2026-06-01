@@ -392,6 +392,14 @@ ktlint {
 tasks.named("check") {
     dependsOn(tasks.withType<io.gitlab.arturbosch.detekt.Detekt>())
     dependsOn(tasks.named("ktlintCheck"))
+    // Android host unit tests run here alongside the host-runnable tests that
+    // check -> allTests already executes (jvm, macosArm64, the Apple simulators,
+    // js, wasmJs, wasmWasi). Test EXECUTION belongs to check, not to the
+    // all-target build set. Cross-OS targets (linux/mingw/android-native) and
+    // device slices can't execute on this host — they run on their own CI runner.
+    dependsOn("testAndroidHostTest")
+    // Swift Export smoke test (macOS-only; self-skips elsewhere via onlyIf).
+    dependsOn("swiftExportSmokeTest")
 }
 
 // ============================================================================
@@ -440,7 +448,9 @@ rootProject.extensions.configure<NodeJsRootExtension>("kotlinNodeJs") {
 // ============================================================================
 mavenPublishing {
     publishToMavenCentral()
-    signAllPublications()
+    if (project.findProperty("RELEASE_SIGNING_ENABLED") != "false") {
+        signAllPublications()
+    }
     val projectName = providers.gradleProperty("project.name").getOrElse("unnamed-project")
     coordinates(group.toString(), projectName, version.toString())
     pom {
@@ -450,8 +460,8 @@ mavenPublishing {
         url.set("https://github.com/KotlinMania/$projectName")
         licenses {
             license {
-                name.set("MIT")
-                url.set("https://opensource.org/licenses/MIT")
+                name.set(providers.gradleProperty("project.pom.licenseName").getOrElse("MIT"))
+                url.set(providers.gradleProperty("project.pom.licenseUrl").getOrElse("https://opensource.org/licenses/MIT"))
                 distribution.set("repo")
             }
         }
@@ -592,6 +602,8 @@ val codeqlCompileJvm =
                 codeqlLanguageVersion,
                 "-api-version",
                 codeqlApiVersion,
+                "-Xmulti-platform",
+                "-Xcommon-sources=${sourceFiles.joinToString(",") { it.absolutePath }}",
                 "-Xexpect-actual-classes",
             ) + commonOptIns.flatMap { listOf("-opt-in", it) } + sourceFiles.map { it.absolutePath }
         }
@@ -658,6 +670,54 @@ tasks.matching { it.name == "embedSwiftExportForXcode" }.configureEach {
     }
 }
 
+// Swift Export smoke test — produces the SPM package via embedSwiftExportForXcode
+// (spawned with the Xcode-style env it requires) and runs `swift test` against it,
+// so Swift Export breakage surfaces locally, not only in the swift.yml CI job.
+// Pattern mirrors kasuari-kotlin. macOS-only; skipped elsewhere.
+tasks.register("swiftExportSmokeTest") {
+    group = "verification"
+    description = "Builds the Swift Export SPM package and runs swift test against it."
+    onlyIf {
+        if (!isMacHost) {
+            logger.lifecycle("swiftExportSmokeTest: skipped because Swift Export smoke tests require macOS")
+        }
+        isMacHost
+    }
+    outputs.upToDateWhen { false }
+
+    doLast {
+        val execOperations = serviceOf<ExecOperations>()
+        val swiftBuildDir = layout.buildDirectory.dir("swift-test").get().asFile.absolutePath
+        execOperations.exec {
+            workingDir = projectDir
+            commandLine(
+                "./gradlew",
+                "embedSwiftExportForXcode",
+                "--no-configuration-cache",
+                "--no-daemon",
+                "--console=plain",
+            )
+            environment(
+                mapOf(
+                    "BUILT_PRODUCTS_DIR" to swiftBuildDir,
+                    "TARGET_BUILD_DIR" to swiftBuildDir,
+                    "SDK_NAME" to "macosx",
+                    "CONFIGURATION" to "Debug",
+                    "ARCHS" to "arm64",
+                    "FRAMEWORKS_FOLDER_PATH" to "Frameworks",
+                    "MACOSX_DEPLOYMENT_TARGET" to "14.0",
+                    "DEPLOYMENT_TARGET_SETTING_NAME" to "MACOSX_DEPLOYMENT_TARGET",
+                ),
+            )
+        }.assertNormalExitValue()
+
+        execOperations.exec {
+            workingDir = layout.projectDirectory.dir("swift-test-harness").asFile
+            commandLine("swift", "test")
+        }.assertNormalExitValue()
+    }
+}
+
 // ============================================================================
 // `build` aggregate
 // ----------------------------------------------------------------------------
@@ -698,7 +758,6 @@ val fullTargetBuildTaskNames =
                 "assembleUnitTest",
                 "assembleAndroidTest",
                 "assembleAndroidDeviceTest",
-                "testAndroidHostTest",
                 "jvmMainClasses",
                 "jvmTestClasses",
                 "jsMainClasses",
