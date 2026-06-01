@@ -1,5 +1,9 @@
 // port-lint: source ordered_map.rs
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package io.github.kotlinmania.starlarkmap.orderedmap
+
+import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -30,6 +34,8 @@ import io.github.kotlinmania.starlarkmap.smallmap.sortKeys
  * Unlike [SmallMap], two [OrderedMap]s are equal only when they contain the same
  * key-value pairs in the same iteration order.
  */
+// generic by design: insertion-ordered map container; key/value params are the public contract.
+@HiddenFromObjC
 class OrderedMap<K, V> internal constructor(
     internal val inner: SmallMap<K, V>,
 ) : Iterable<Pair<K, V>> {

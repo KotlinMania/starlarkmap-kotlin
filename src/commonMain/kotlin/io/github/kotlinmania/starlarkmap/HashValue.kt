@@ -1,5 +1,9 @@
 // port-lint: source hash_value.rs
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package io.github.kotlinmania.starlarkmap
+
+import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -29,6 +33,9 @@ data class StarlarkHashValue private constructor(
         /**
          * Create a new [StarlarkHashValue] using the [hashCode] contract for the given key.
          */
+        // Hashing accepts arbitrary keys (Rust's `Hash` bound has no Kotlin analog), so the
+        // parameter is intrinsically `Any?`. Hidden from the Swift bridge — Kotlin callers keep it.
+        @HiddenFromObjC
         fun new(key: Any?): StarlarkHashValue {
             val hasher = StarlarkHasher()
             key.hash(hasher)
@@ -75,6 +82,10 @@ data class StarlarkHashValue private constructor(
 /**
  * Kotlin equivalent for hashing into [StarlarkHasher].
  */
+// SAM by design: its generated constructor takes a `(StarlarkHasher) -> Unit` closure, which the
+// Kotlin/Native Swift-export cache builder cannot lower. Hidden from the Swift bridge; Kotlin
+// implementors are unaffected.
+@HiddenFromObjC
 fun interface StarlarkHashable {
     fun writeHash(hasher: StarlarkHasher)
 }

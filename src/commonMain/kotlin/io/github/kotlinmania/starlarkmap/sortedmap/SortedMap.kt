@@ -1,5 +1,9 @@
 // port-lint: source sorted_map.rs
+@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
+
 package io.github.kotlinmania.starlarkmap.sortedmap
+
+import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -28,6 +32,8 @@ import io.github.kotlinmania.starlarkmap.smallmap.SmallMap
  * [OrderedMap] but with keys sorted.
  *
  */
+// generic by design: key-sorted map container; key/value params are the public contract.
+@HiddenFromObjC
 class SortedMap<K, V> internal constructor(
     private val map: OrderedMap<K, V>,
 ) : Iterable<Pair<K, V>> {
