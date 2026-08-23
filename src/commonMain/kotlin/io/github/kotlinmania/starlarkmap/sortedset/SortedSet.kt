@@ -3,8 +3,6 @@
 
 package io.github.kotlinmania.starlarkmap.sortedset
 
-import kotlin.native.HiddenFromObjC
-
 /*
  * Copyright 2019 The Starlark in Rust Authors.
  * Copyright (c) Facebook, Inc. and its affiliates.
@@ -28,6 +26,7 @@ import io.github.kotlinmania.starlarkmap.orderedset.OrderedSet
 import io.github.kotlinmania.starlarkmap.orderedset.sort
 import io.github.kotlinmania.starlarkmap.smallset.SmallSet
 import io.github.kotlinmania.starlarkmap.sortedvec.SortedVec
+import kotlin.native.HiddenFromObjC
 
 /**
  * An immutable [SmallSet] with values guaranteed to be sorted.
@@ -38,7 +37,6 @@ import io.github.kotlinmania.starlarkmap.sortedvec.SortedVec
 class SortedSet<T> internal constructor(
     private val inner: OrderedSet<T>,
 ) : Iterable<T> {
-
     companion object {
         /** Construct an empty [SortedSet]. */
         fun <T> new(): SortedSet<T> where T : Comparable<T> =

@@ -136,13 +136,18 @@ internal class VecMap<K, V> private constructor(
 
     fun iter(): Sequence<Pair<K, V>> = buckets.firstElements().asSequence()
 
-    fun iterHashed(): Sequence<Pair<Hashed<K>, V>> = buckets.iter().map { (pair, hash) ->
-        Pair(Hashed.newUnchecked(hash, pair.first), pair.second)
-    }
+    fun iterHashed(): Sequence<Pair<Hashed<K>, V>> =
+        buckets.iter().map { (pair, hash) ->
+            Pair(Hashed.newUnchecked(hash, pair.first), pair.second)
+        }
 
-    fun intoIterHashed(): Iterator<Pair<Hashed<K>, V>> = buckets.intoIter().asSequence().map { (pair, hash) ->
-        Pair(Hashed.newUnchecked(hash, pair.first), pair.second)
-    }.iterator()
+    fun intoIterHashed(): Iterator<Pair<Hashed<K>, V>> =
+        buckets
+            .intoIter()
+            .asSequence()
+            .map { (pair, hash) ->
+                Pair(Hashed.newUnchecked(hash, pair.first), pair.second)
+            }.iterator()
 
     fun iterMut(): Sequence<Pair<K, V>> = buckets.firstElementsMut().asSequence()
 
@@ -182,5 +187,9 @@ internal fun <K : Comparable<K>, V> VecMap<K, V>.sortKeys() {
 
 internal fun <K : Comparable<K>, V> VecMap<K, V>.isSortedByKey(): Boolean {
     // Check if all consecutive pairs are in sorted order.
-    return buckets.firstElements().asSequence().windowed(2).all { (a, b) -> a.first <= b.first }
+    return buckets
+        .firstElements()
+        .asSequence()
+        .windowed(2)
+        .all { (a, b) -> a.first <= b.first }
 }

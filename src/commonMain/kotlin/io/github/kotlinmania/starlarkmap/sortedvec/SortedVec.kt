@@ -32,7 +32,6 @@ import kotlin.native.HiddenFromObjC
 class SortedVec<T> private constructor(
     private val vec: MutableList<T>,
 ) : Iterable<T> {
-
     companion object {
         /** Construct an empty [SortedVec]. */
         fun <T> new(): SortedVec<T> = SortedVec(mutableListOf())

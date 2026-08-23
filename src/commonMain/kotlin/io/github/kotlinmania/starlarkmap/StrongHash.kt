@@ -33,4 +33,3 @@ import kotlin.native.HiddenFromObjC
 fun interface StrongHash {
     fun strongHash(state: StarlarkHasher)
 }
-

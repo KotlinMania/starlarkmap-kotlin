@@ -1,6 +1,6 @@
 # port-lint Proposed Changes
 
-**Generated:** 2026-05-20
+**Generated:** 2026-08-22
 **Source:** tmp/starlark_map/src
 **Target:** src/commonMain/kotlin/io/github/kotlinmania/starlarkmap
 

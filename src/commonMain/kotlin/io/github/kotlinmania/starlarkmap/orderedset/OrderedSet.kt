@@ -3,8 +3,6 @@
 
 package io.github.kotlinmania.starlarkmap.orderedset
 
-import kotlin.native.HiddenFromObjC
-
 /*
  * Copyright 2019 The Starlark in Rust Authors.
  * Copyright (c) Facebook, Inc. and its affiliates.
@@ -27,6 +25,7 @@ import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
 import io.github.kotlinmania.starlarkmap.smallset.SmallSet
 import io.github.kotlinmania.starlarkmap.smallset.sort
+import kotlin.native.HiddenFromObjC
 
 /**
  * [SmallSet] wrapper, but equality and hash of self depends on iteration order.
@@ -39,7 +38,6 @@ import io.github.kotlinmania.starlarkmap.smallset.sort
 class OrderedSet<T> internal constructor(
     internal val inner: SmallSet<T>,
 ) : Iterable<T> {
-
     companion object {
         /** Create a new empty set. */
         fun <T> new(): OrderedSet<T> = OrderedSet(SmallSet())
@@ -130,11 +128,14 @@ class OrderedSet<T> internal constructor(
      */
     fun tryInsert(value: T): OccupiedError<T>? {
         val hashed = Hashed.new(value)
-        val existing = inner.getHashed(object : Equivalent<T> {
-            override fun equivalent(key: T): Boolean = hashed.key() == key
-        }.let { equiv ->
-            Hashed.newUnchecked(hashed.hash(), equiv)
-        })
+        val existing =
+            inner.getHashed(
+                object : Equivalent<T> {
+                    override fun equivalent(key: T): Boolean = hashed.key() == key
+                }.let { equiv ->
+                    Hashed.newUnchecked(hashed.hash(), equiv)
+                },
+            )
         if (existing != null) {
             return OccupiedError(value, existing)
         }
@@ -187,9 +188,7 @@ class OrderedSet<T> internal constructor(
         return result
     }
 
-    override fun toString(): String {
-        return iter().joinToString(", ", "{", "}")
-    }
+    override fun toString(): String = iter().joinToString(", ", "{", "}")
 }
 
 /**

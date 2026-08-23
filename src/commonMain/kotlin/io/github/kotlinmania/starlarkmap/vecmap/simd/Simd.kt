@@ -45,9 +45,7 @@ internal fun findHashInArrayWithoutSimd(array: UIntArray, hash: UInt): Int? {
  *
  * and falls back to scalar otherwise. In Kotlin, we always import the scalar path.
  */
-internal fun findHashInArray(array: UIntArray, hash: UInt): Int? {
-    return findHashInArrayWithoutSimd(array, hash)
-}
+internal fun findHashInArray(array: UIntArray, hash: UInt): Int? = findHashInArrayWithoutSimd(array, hash)
 
 /**
  * Search a list of hashes from `fromIndex` for the first matching hash.

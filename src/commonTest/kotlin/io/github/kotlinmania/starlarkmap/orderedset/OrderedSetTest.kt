@@ -65,8 +65,11 @@ class OrderedSetTest {
         assertTrue(err.value === one)
     }
 
-    private class IntBox(val v: Int) {
+    private class IntBox(
+        val v: Int,
+    ) {
         override fun equals(other: Any?): Boolean = other is IntBox && other.v == v
+
         override fun hashCode(): Int = v.hashCode()
     }
 }

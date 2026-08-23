@@ -80,9 +80,7 @@ private fun rotateLeft64(x: ULong, bits: Int): ULong {
     return (x shl n) or (x shr (64 - n))
 }
 
-private fun hashWord(hash: ULong, word: ULong): ULong {
-    return (rotateLeft64(hash, FX_ROTATE) xor word) * FX_SEED64
-}
+private fun hashWord(hash: ULong, word: ULong): ULong = (rotateLeft64(hash, FX_ROTATE) xor word) * FX_SEED64
 
 private fun write64(initial: ULong, bytes: ByteArray): ULong {
     var hash = initial

@@ -8,7 +8,9 @@ internal class Keys<K, V>(
     internal val iter: Iter<K, V>,
 ) : Iterator<K> {
     override fun hasNext(): Boolean = iter.hasNext()
+
     override fun next(): K = map(iter.next())
+
     fun len(): Int = remaining()
 
     private fun map(item: Pair<K, V>): K {
@@ -23,7 +25,9 @@ internal class Values<K, V>(
     internal val iter: Iter<K, V>,
 ) : Iterator<V> {
     override fun hasNext(): Boolean = iter.hasNext()
+
     override fun next(): V = map(iter.next())
+
     fun len(): Int = remaining()
 
     private fun map(item: Pair<K, V>): V {
@@ -38,7 +42,9 @@ internal class ValuesMut<K, V>(
     internal val iter: IterMut<K, V>,
 ) : Iterator<V> {
     override fun hasNext(): Boolean = iter.hasNext()
+
     override fun next(): V = map(iter.next())
+
     fun len(): Int = remaining()
 
     private fun map(item: Pair<K, V>): V {
@@ -54,7 +60,9 @@ internal class Iter<K, V>(
     private val remaining: () -> Int,
 ) : Iterator<Pair<K, V>> {
     override fun hasNext(): Boolean = iter.hasNext()
+
     override fun next(): Pair<K, V> = map(iter.next())
+
     fun len(): Int = remaining()
 
     private fun map(item: Pair<K, V>): Pair<K, V> {
@@ -68,7 +76,9 @@ internal class IterHashed<K, V>(
     private val remaining: () -> Int,
 ) : Iterator<Pair<Hashed<K>, V>> {
     override fun hasNext(): Boolean = iter.hasNext()
+
     override fun next(): Pair<Hashed<K>, V> = map(iter.next())
+
     fun len(): Int = remaining()
 
     private fun map(item: Pair<Pair<K, V>, StarlarkHashValue>): Pair<Hashed<K>, V> {
@@ -83,7 +93,9 @@ internal class IterMut<K, V>(
     private val remaining: () -> Int,
 ) : Iterator<Pair<K, V>> {
     override fun hasNext(): Boolean = iter.hasNext()
+
     override fun next(): Pair<K, V> = map(iter.next())
+
     fun len(): Int = remaining()
 
     private fun map(item: Pair<K, V>): Pair<K, V> {
@@ -97,7 +109,9 @@ internal class IterMutUnchecked<K, V>(
     private val remaining: () -> Int,
 ) : Iterator<Pair<K, V>> {
     override fun hasNext(): Boolean = iter.hasNext()
+
     override fun next(): Pair<K, V> = map(iter.next())
+
     fun len(): Int = remaining()
 
     private fun map(item: Pair<K, V>): Pair<K, V> {
@@ -111,7 +125,9 @@ internal class IntoIterHashed<K, V>(
     private val remaining: () -> Int,
 ) : Iterator<Pair<Hashed<K>, V>> {
     override fun hasNext(): Boolean = iter.hasNext()
+
     override fun next(): Pair<Hashed<K>, V> = map(iter.next())
+
     fun len(): Int = remaining()
 
     private fun map(item: Pair<Pair<K, V>, StarlarkHashValue>): Pair<Hashed<K>, V> {
@@ -125,7 +141,9 @@ internal class IntoIter<K, V>(
     internal val iter: IntoIterHashed<K, V>,
 ) : Iterator<Pair<K, V>> {
     override fun hasNext(): Boolean = iter.hasNext()
+
     override fun next(): Pair<K, V> = map(iter.next())
+
     fun len(): Int = iter.len()
 
     private fun map(item: Pair<Hashed<K>, V>): Pair<K, V> {

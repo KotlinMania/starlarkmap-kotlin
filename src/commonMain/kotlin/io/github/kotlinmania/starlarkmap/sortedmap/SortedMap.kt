@@ -3,8 +3,6 @@
 
 package io.github.kotlinmania.starlarkmap.sortedmap
 
-import kotlin.native.HiddenFromObjC
-
 /*
  * Copyright 2019 The Starlark in Rust Authors.
  * Copyright (c) Facebook, Inc. and its affiliates.
@@ -27,6 +25,7 @@ import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.orderedmap.OrderedMap
 import io.github.kotlinmania.starlarkmap.orderedmap.sortKeys
 import io.github.kotlinmania.starlarkmap.smallmap.SmallMap
+import kotlin.native.HiddenFromObjC
 
 /**
  * [OrderedMap] but with keys sorted.
@@ -37,7 +36,6 @@ import io.github.kotlinmania.starlarkmap.smallmap.SmallMap
 class SortedMap<K, V> internal constructor(
     private val map: OrderedMap<K, V>,
 ) : Iterable<Pair<K, V>> {
-
     companion object {
         /** Construct an empty [SortedMap]. */
         fun <K, V> new(): SortedMap<K, V> where K : Comparable<K> =

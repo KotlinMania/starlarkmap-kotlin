@@ -3,8 +3,6 @@
 
 package io.github.kotlinmania.starlarkmap.unorderedmap
 
-import kotlin.native.HiddenFromObjC
-
 /*
  * Copyright 2019 The Starlark in Rust Authors.
  * Copyright (c) Facebook, Inc. and its affiliates.
@@ -26,6 +24,7 @@ import kotlin.native.HiddenFromObjC
 import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
 import io.github.kotlinmania.starlarkmap.StarlarkHashValue
+import kotlin.native.HiddenFromObjC
 
 /**
  * Hash map which does not expose any insertion order-specific behavior
@@ -38,7 +37,6 @@ import io.github.kotlinmania.starlarkmap.StarlarkHashValue
 class UnorderedMap<K, V> internal constructor(
     internal val table: HashMap<K, V>,
 ) {
-
     companion object {
         /** Create a new empty map. */
         fun <K, V> new(): UnorderedMap<K, V> = UnorderedMap(HashMap())
@@ -126,13 +124,12 @@ class UnorderedMap<K, V> internal constructor(
     /**
      * Get an entry in the map for in-place manipulation.
      */
-    fun entry(key: K): Entry<K, V> {
-        return if (table.containsKey(key)) {
+    fun entry(key: K): Entry<K, V> =
+        if (table.containsKey(key)) {
             Entry.Occupied(OccupiedEntry(this, key))
         } else {
             Entry.Vacant(VacantEntry(this, key))
         }
-    }
 
     /**
      * Lower-level access to the entry API.
@@ -210,17 +207,13 @@ class UnorderedMap<K, V> internal constructor(
         return len() * 31 + sum
     }
 
-    override fun toString(): String {
-        return table.toString()
-    }
+    override fun toString(): String = table.toString()
 }
 
 /**
  * Get the entries in the map, sorted by key.
  */
-fun <K : Comparable<K>, V> UnorderedMap<K, V>.entriesSorted(): List<Pair<K, V>> {
-    return entriesUnordered().sortedWith(compareBy { it.first }).toList()
-}
+fun <K : Comparable<K>, V> UnorderedMap<K, V>.entriesSorted(): List<Pair<K, V>> = entriesUnordered().sortedWith(compareBy { it.first }).toList()
 
 /**
  * Reference to an entry in a [UnorderedMap].
@@ -230,26 +223,29 @@ fun <K : Comparable<K>, V> UnorderedMap<K, V>.entriesSorted(): List<Pair<K, V>> 
 sealed class Entry<K, V> {
     /** Occupied entry. */
     @HiddenFromObjC
-    class Occupied<K, V>(val entry: OccupiedEntry<K, V>) : Entry<K, V>()
+    class Occupied<K, V>(
+        val entry: OccupiedEntry<K, V>,
+    ) : Entry<K, V>()
 
     /** Vacant entry. */
     @HiddenFromObjC
-    class Vacant<K, V>(val entry: VacantEntry<K, V>) : Entry<K, V>()
+    class Vacant<K, V>(
+        val entry: VacantEntry<K, V>,
+    ) : Entry<K, V>()
 
     /** Insert a value if vacant, or return the existing value. */
-    fun orInsert(defaultValue: V): V {
-        return when (this) {
+    fun orInsert(defaultValue: V): V =
+        when (this) {
             is Occupied -> entry.get()
             is Vacant -> {
                 entry.insert(defaultValue)
                 defaultValue
             }
         }
-    }
 
     /** Insert a value computed by a function if vacant, or return the existing value. */
-    fun orInsertWith(defaultValue: () -> V): V {
-        return when (this) {
+    fun orInsertWith(defaultValue: () -> V): V =
+        when (this) {
             is Occupied -> entry.get()
             is Vacant -> {
                 val v = defaultValue()
@@ -257,7 +253,6 @@ sealed class Entry<K, V> {
                 v
             }
         }
-    }
 }
 
 /**
@@ -309,13 +304,12 @@ class RawEntryBuilderMut<K, V>(
     /**
      * Find an entry by key.
      */
-    fun fromKey(key: K): RawEntryMut<K, V> {
-        return if (map.table.containsKey(key)) {
+    fun fromKey(key: K): RawEntryMut<K, V> =
+        if (map.table.containsKey(key)) {
             RawEntryMut.Occupied(RawOccupiedEntryMut(map, key))
         } else {
             RawEntryMut.Vacant(RawVacantEntryMut(map))
         }
-    }
 
     /**
      * Find an entry by hashed key.
@@ -345,10 +339,15 @@ class RawEntryBuilderMut<K, V>(
 sealed class RawEntryMut<K, V> {
     /** Occupied entry. */
     @HiddenFromObjC
-    class Occupied<K, V>(val entry: RawOccupiedEntryMut<K, V>) : RawEntryMut<K, V>()
+    class Occupied<K, V>(
+        val entry: RawOccupiedEntryMut<K, V>,
+    ) : RawEntryMut<K, V>()
+
     /** Vacant entry. */
     @HiddenFromObjC
-    class Vacant<K, V>(val entry: RawVacantEntryMut<K, V>) : RawEntryMut<K, V>()
+    class Vacant<K, V>(
+        val entry: RawVacantEntryMut<K, V>,
+    ) : RawEntryMut<K, V>()
 }
 
 /**
