@@ -138,7 +138,9 @@ class SmallMapTest {
     @Test
     fun testDuplicateHashes() {
         // A type which always gives hash collisions
-        data class K(val n: Int) {
+        data class K(
+            val n: Int,
+        ) {
             override fun hashCode(): Int = 0
         }
 
@@ -254,7 +256,9 @@ class SmallMapTest {
 
     @Test
     fun testSortKeysUpdatesIndexOnPanic() {
-        data class Key(val n: UInt) : Comparable<Key> {
+        data class Key(
+            val n: UInt,
+        ) : Comparable<Key> {
             override fun compareTo(other: Key): Int {
                 if (n < 10u && other.n < 10u) {
                     error("panic in compareTo")
@@ -351,11 +355,12 @@ class SmallMapTest {
         assertEquals(10, value2)
         assertEquals(10, map.get("key2"))
 
-        val value3 = map
-            .entry("key3")
-            .andModify { v -> v * 2 }
-            .andModify { v -> v + 10 }
-            .orInsert(0)
+        val value3 =
+            map
+                .entry("key3")
+                .andModify { v -> v * 2 }
+                .andModify { v -> v + 10 }
+                .orInsert(0)
         assertEquals(210, value3)
         assertEquals(210, map.get("key3"))
     }

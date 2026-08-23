@@ -20,11 +20,11 @@ package io.github.kotlinmania.starlarkmap.smallset.iter
  */
 
 import io.github.kotlinmania.starlarkmap.Hashed
-import io.github.kotlinmania.starlarkmap.smallmap.iter.Iter as SmallMapIter
-import io.github.kotlinmania.starlarkmap.smallmap.iter.IterMutUnchecked as SmallMapIterMutUnchecked
-import io.github.kotlinmania.starlarkmap.smallmap.iter.IterHashed as SmallMapIterHashed
 import io.github.kotlinmania.starlarkmap.smallmap.iter.IntoIter as SmallMapIntoIter
 import io.github.kotlinmania.starlarkmap.smallmap.iter.IntoIterHashed as SmallMapIntoIterHashed
+import io.github.kotlinmania.starlarkmap.smallmap.iter.Iter as SmallMapIter
+import io.github.kotlinmania.starlarkmap.smallmap.iter.IterHashed as SmallMapIterHashed
+import io.github.kotlinmania.starlarkmap.smallmap.iter.IterMutUnchecked as SmallMapIterMutUnchecked
 
 /**
  * Iterator types for [SmallSet][starlarkmap.smallset.SmallSet].
@@ -37,7 +37,9 @@ internal class Iter<T>(
     internal val iter: SmallMapIter<T, Unit>,
 ) : Iterator<T> {
     override fun hasNext(): Boolean = iter.hasNext()
+
     override fun next(): T = iter.next().first
+
     fun len(): Int = iter.len()
 }
 
@@ -49,7 +51,9 @@ internal class IterMutUnchecked<T>(
     internal val iter: SmallMapIterMutUnchecked<T, Unit>,
 ) : Iterator<T> {
     override fun hasNext(): Boolean = iter.hasNext()
+
     override fun next(): T = iter.next().first
+
     fun len(): Int = iter.len()
 }
 
@@ -57,7 +61,9 @@ internal class IterHashed<T>(
     internal val iter: SmallMapIterHashed<T, Unit>,
 ) : Iterator<Hashed<T>> {
     override fun hasNext(): Boolean = iter.hasNext()
+
     override fun next(): Hashed<T> = iter.next().first
+
     fun len(): Int = iter.len()
 }
 
@@ -65,7 +71,9 @@ internal class IntoIter<T>(
     internal val iter: SmallMapIntoIter<T, Unit>,
 ) : Iterator<T> {
     override fun hasNext(): Boolean = iter.hasNext()
+
     override fun next(): T = iter.next().first
+
     fun len(): Int = iter.len()
 }
 
@@ -73,6 +81,8 @@ internal class IntoIterHashed<T>(
     internal val iter: SmallMapIntoIterHashed<T, Unit>,
 ) : Iterator<Hashed<T>> {
     override fun hasNext(): Boolean = iter.hasNext()
+
     override fun next(): Hashed<T> = iter.next().first
+
     fun len(): Int = iter.len()
 }

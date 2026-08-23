@@ -25,7 +25,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 
 class OrderedMapTest {
-
     /**
      * Verifies that when the map itself is hashed (via [hashCode]), keys are not
      * re-hashed (they were hashed on insertion), but values are hashed each time.

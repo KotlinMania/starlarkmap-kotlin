@@ -34,13 +34,14 @@ class SortedMapTest {
 
     @Test
     fun testValueModification() {
-        val map = SortedMap.fromIterator(
-            listOf(
-                Pair(1, mutableListOf(1, 2, 3)),
-                Pair(2, mutableListOf(4)),
-                Pair(3, mutableListOf(5)),
-            ),
-        )
+        val map =
+            SortedMap.fromIterator(
+                listOf(
+                    Pair(1, mutableListOf(1, 2, 3)),
+                    Pair(2, mutableListOf(4)),
+                    Pair(3, mutableListOf(5)),
+                ),
+            )
         val keys = map.keys().toMutableList()
         keys.sort()
         assertEquals(keys, map.keys().toList())

@@ -19,6 +19,7 @@ package io.github.kotlinmania.starlarkmap.smallset
  * limitations under the License.
  */
 
+import io.github.kotlinmania.starlarkmap.Equivalent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -26,10 +27,8 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
-import io.github.kotlinmania.starlarkmap.Equivalent
 
 class SmallSetTest {
-
     @Test
     fun emptySet() {
         val m = SmallSet<Byte>()
@@ -191,12 +190,18 @@ class SmallSetTest {
     }
 }
 
-private class Boxed(val value: Int) {
+private class Boxed(
+    val value: Int,
+) {
     override fun equals(other: Any?): Boolean = other is Boxed && other.value == value
+
     override fun hashCode(): Int = value.hashCode()
 }
 
-private class BoxedKey(val value: Int) : Equivalent<Boxed> {
+private class BoxedKey(
+    val value: Int,
+) : Equivalent<Boxed> {
     override fun equivalent(key: Boxed): Boolean = key.value == value
+
     override fun hashCode(): Int = value.hashCode()
 }

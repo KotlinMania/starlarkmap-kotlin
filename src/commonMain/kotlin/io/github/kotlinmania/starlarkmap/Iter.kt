@@ -34,13 +34,12 @@ internal abstract class DefIter<T, R>(
 ) {
     protected abstract fun map(item: T): R
 
-    fun next(): R? {
-        return if (iter.hasNext()) {
+    fun next(): R? =
+        if (iter.hasNext()) {
             map(iter.next())
         } else {
             null
         }
-    }
 
     fun nth(n: Int): R? {
         var i = 0
@@ -90,12 +89,10 @@ internal abstract class DefDoubleEndedIter<T, R>(
 ) {
     protected abstract fun map(item: T): R
 
-    fun nextBack(): R? {
-        return if (iter.hasPrevious()) {
+    fun nextBack(): R? =
+        if (iter.hasPrevious()) {
             map(iter.previous())
         } else {
             null
         }
-    }
 }
-

@@ -132,9 +132,7 @@ class Hashed<K> private constructor(
         return hash.hashCode()
     }
 
-    override fun toString(): String {
-        return key.toString()
-    }
+    override fun toString(): String = key.toString()
 }
 
 private fun Any?.fmt(f: Appendable): Appendable {
@@ -142,15 +140,10 @@ private fun Any?.fmt(f: Appendable): Appendable {
     return f
 }
 
-
 fun <K : StrongHash> Hashed<K>.strongHash(state: StarlarkHasher) {
     key().strongHash(state)
 }
 
-fun <K : Comparable<K>> Hashed<K>.partialCmp(other: Hashed<K>): Int? {
-    return key().compareTo(other.key())
-}
+fun <K : Comparable<K>> Hashed<K>.partialCmp(other: Hashed<K>): Int? = key().compareTo(other.key())
 
-fun <K : Comparable<K>> Hashed<K>.cmp(other: Hashed<K>): Int {
-    return key().compareTo(other.key())
-}
+fun <K : Comparable<K>> Hashed<K>.cmp(other: Hashed<K>): Int = key().compareTo(other.key())

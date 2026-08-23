@@ -3,8 +3,6 @@
 
 package io.github.kotlinmania.starlarkmap.smallmap
 
-import kotlin.native.HiddenFromObjC
-
 /*
  * Copyright 2019 The Starlark in Rust Authors.
  * Copyright (c) Facebook, Inc. and its affiliates.
@@ -26,6 +24,7 @@ import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
 import io.github.kotlinmania.starlarkmap.StarlarkHashValue
 import io.github.kotlinmania.starlarkmap.vecmap.VecMap
+import kotlin.native.HiddenFromObjC
 import io.github.kotlinmania.starlarkmap.vecmap.sortKeys as vecMapSortKeys
 
 /**
@@ -165,13 +164,9 @@ class SmallMap<K, V> internal constructor(
 
     fun getIndex(index: Int): Pair<K, V>? = entries.getIndex(index)
 
-    fun <Q> getFull(key: Q): SmallMapFullEntry<K, V>? where Q : Equivalent<K> {
-        return getFullHashed(Hashed.new(key))
-    }
+    fun <Q> getFull(key: Q): SmallMapFullEntry<K, V>? where Q : Equivalent<K> = getFullHashed(Hashed.new(key))
 
-    fun getFull(key: K): SmallMapFullEntry<K, V>? {
-        return getFullHashedByValue(Hashed.new(key))
-    }
+    fun getFull(key: K): SmallMapFullEntry<K, V>? = getFullHashedByValue(Hashed.new(key))
 
     fun <Q> getFullHashed(key: Hashed<Q>): SmallMapFullEntry<K, V>? where Q : Equivalent<K> {
         val index = getIndexOfHashed(key) ?: return null
@@ -205,13 +200,9 @@ class SmallMap<K, V> internal constructor(
         return entries.valueAt(i)
     }
 
-    fun getIndexOfHashedByValue(key: Hashed<K>): Int? {
-        return getIndexOfHashedRaw(key.hash()) { k -> k == key.key() }
-    }
+    fun getIndexOfHashedByValue(key: Hashed<K>): Int? = getIndexOfHashedRaw(key.hash()) { k -> k == key.key() }
 
-    fun <Q> getIndexOfHashed(key: Hashed<Q>): Int? where Q : Equivalent<K> {
-        return getIndexOfHashedRaw(key.hash()) { k -> key.key().equivalent(k) }
-    }
+    fun <Q> getIndexOfHashed(key: Hashed<Q>): Int? where Q : Equivalent<K> = getIndexOfHashedRaw(key.hash()) { k -> key.key().equivalent(k) }
 
     fun getIndexOf(key: K): Int? =
         getIndexOfHashedRaw(StarlarkHashValue.new(key)) { k -> k == key }
@@ -264,9 +255,7 @@ class SmallMap<K, V> internal constructor(
     }
 
     /** Find a mutable value by a given key. */
-    fun <Q> getMut(key: Q): MutableValueRef<V>? where Q : Equivalent<K> {
-        return getMutHashed(Hashed.new(key))
-    }
+    fun <Q> getMut(key: Q): MutableValueRef<V>? where Q : Equivalent<K> = getMutHashed(Hashed.new(key))
 
     fun getMut(key: K): MutableValueRef<V>? = getMutHashedByValue(Hashed.new(key))
 
@@ -500,12 +489,13 @@ class SmallMap<K, V> internal constructor(
     }
 }
 
-private fun formatDebug(value: Any?): String = when (value) {
-    null -> "null"
-    is String -> "\"$value\""
-    is Char -> "'$value'"
-    else -> value.toString()
-}
+private fun formatDebug(value: Any?): String =
+    when (value) {
+        null -> "null"
+        is String -> "\"$value\""
+        is Char -> "'$value'"
+        else -> value.toString()
+    }
 
 /** Reference to the actual entry in the map. */
 // generic by design: occupied map entry; key/value params are the public contract.
@@ -556,26 +546,32 @@ class VacantEntry<K, V> internal constructor(
 sealed class Entry<K, V> {
     /** Occupied entry. */
     @HiddenFromObjC
-    class Occupied<K, V>(val entry: OccupiedEntry<K, V>) : Entry<K, V>()
+    class Occupied<K, V>(
+        val entry: OccupiedEntry<K, V>,
+    ) : Entry<K, V>()
 
     /** No entry for given key. */
     @HiddenFromObjC
-    class Vacant<K, V>(val entry: VacantEntry<K, V>) : Entry<K, V>()
+    class Vacant<K, V>(
+        val entry: VacantEntry<K, V>,
+    ) : Entry<K, V>()
 
     /** Key for this entry. */
-    fun key(): K = when (this) {
-        is Occupied -> entry.key()
-        is Vacant -> entry.key()
-    }
+    fun key(): K =
+        when (this) {
+            is Occupied -> entry.key()
+            is Vacant -> entry.key()
+        }
 
     /** Insert if vacant, returning the existing or inserted value. */
     fun orInsert(defaultValue: V): V = orInsertWith { defaultValue }
 
     /** Insert if vacant, returning the existing or inserted value. */
-    fun orInsertWith(defaultValue: () -> V): V = when (this) {
-        is Occupied -> entry.get()
-        is Vacant -> entry.insert(defaultValue())
-    }
+    fun orInsertWith(defaultValue: () -> V): V =
+        when (this) {
+            is Occupied -> entry.get()
+            is Vacant -> entry.insert(defaultValue())
+        }
 
     /** Modify if present. Returns this entry. */
     fun andModify(f: (V) -> V): Entry<K, V> {
@@ -603,5 +599,6 @@ class MutableValueRef<V>(
     private val setFn: (V) -> Unit = set
 
     fun get(): V = getFn()
+
     fun set(value: V) = setFn(value)
 }

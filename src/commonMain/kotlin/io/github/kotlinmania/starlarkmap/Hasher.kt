@@ -33,9 +33,7 @@ class StarlarkHasher : Hasher {
         /**
          * Creates a new hasher.
          */
-        fun new(): StarlarkHasher {
-            return StarlarkHasher()
-        }
+        fun new(): StarlarkHasher = StarlarkHasher()
     }
 
     // TODO(nga): `FxHasher64` is endian-dependent, this is not right.
@@ -51,9 +49,7 @@ class StarlarkHasher : Hasher {
         return StarlarkHashValue.newUnchecked(finish().toUInt())
     }
 
-    override fun finish(): ULong {
-        return inner.finish()
-    }
+    override fun finish(): ULong = inner.finish()
 
     override fun write(bytes: ByteArray) {
         inner.write(bytes)
@@ -92,19 +88,24 @@ class StarlarkHasherBuilder : BuildHasher<StarlarkHasher> {
     /**
      * Create a new hasher.
      */
-    override fun buildHasher(): StarlarkHasher {
-        return StarlarkHasher()
-    }
+    override fun buildHasher(): StarlarkHasher = StarlarkHasher()
 }
 
 interface Hasher {
     fun finish(): ULong
+
     fun write(bytes: ByteArray)
+
     fun writeU8(i: UByte)
+
     fun writeU16(i: UShort)
+
     fun writeU32(i: UInt)
+
     fun writeU64(i: ULong)
+
     fun writeU128(i: U128)
+
     fun writeUsize(i: ULong)
 }
 

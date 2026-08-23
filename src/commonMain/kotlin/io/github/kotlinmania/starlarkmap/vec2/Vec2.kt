@@ -3,8 +3,6 @@
 
 package io.github.kotlinmania.starlarkmap.vec2
 
-import kotlin.native.HiddenFromObjC
-
 /*
  * Copyright 2019 The Starlark in Rust Authors.
  * Copyright (c) Facebook, Inc. and its affiliates.
@@ -25,6 +23,7 @@ import kotlin.native.HiddenFromObjC
 
 import io.github.kotlinmania.starlarkmap.sorting.insertion.insertionSort
 import io.github.kotlinmania.starlarkmap.sorting.insertion.sliceSwapShift
+import kotlin.native.HiddenFromObjC
 
 /**
  * A `List<Pair<A, B>>`-like object which stores `A` and `B` separately.
@@ -193,4 +192,3 @@ class Vec2<A, B> private constructor(
         }
     }
 }
-

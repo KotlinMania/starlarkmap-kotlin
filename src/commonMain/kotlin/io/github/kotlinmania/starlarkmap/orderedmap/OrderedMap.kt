@@ -3,8 +3,6 @@
 
 package io.github.kotlinmania.starlarkmap.orderedmap
 
-import kotlin.native.HiddenFromObjC
-
 /*
  * Copyright 2019 The Starlark in Rust Authors.
  * Copyright (c) Facebook, Inc. and its affiliates.
@@ -27,6 +25,7 @@ import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
 import io.github.kotlinmania.starlarkmap.smallmap.SmallMap
 import io.github.kotlinmania.starlarkmap.smallmap.sortKeys
+import kotlin.native.HiddenFromObjC
 
 /**
  * Wrapper for [SmallMap] which considers map equal if iteration order is equal.
@@ -39,7 +38,6 @@ import io.github.kotlinmania.starlarkmap.smallmap.sortKeys
 class OrderedMap<K, V> internal constructor(
     internal val inner: SmallMap<K, V>,
 ) : Iterable<Pair<K, V>> {
-
     companion object {
         /** Create a new empty map. */
         fun <K, V> new(): OrderedMap<K, V> = OrderedMap(SmallMap.new())
@@ -175,9 +173,7 @@ class OrderedMap<K, V> internal constructor(
         return result
     }
 
-    override fun toString(): String {
-        return iter().joinToString(", ", "{", "}") { (k, v) -> "$k=$v" }
-    }
+    override fun toString(): String = iter().joinToString(", ", "{", "}") { (k, v) -> "$k=$v" }
 }
 
 /**

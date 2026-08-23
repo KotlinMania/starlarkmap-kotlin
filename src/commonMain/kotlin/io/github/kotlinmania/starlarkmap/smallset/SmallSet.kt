@@ -3,8 +3,6 @@
 
 package io.github.kotlinmania.starlarkmap.smallset
 
-import kotlin.native.HiddenFromObjC
-
 /*
  * Copyright 2019 The Starlark in Rust Authors.
  * Copyright (c) Facebook, Inc. and its affiliates.
@@ -28,6 +26,7 @@ import io.github.kotlinmania.starlarkmap.Hashed
 import io.github.kotlinmania.starlarkmap.smallmap.Entry
 import io.github.kotlinmania.starlarkmap.smallmap.SmallMap
 import io.github.kotlinmania.starlarkmap.smallmap.sortKeys
+import kotlin.native.HiddenFromObjC
 
 /**
  * A set with deterministic iteration order.
@@ -114,28 +113,26 @@ class SmallSet<T> internal constructor(
         }
     }
 
-    fun containsHashedByValue(key: Hashed<T>): Boolean {
-        return inner.getIndexOfHashedByValue(key) != null
-    }
+    fun containsHashedByValue(key: Hashed<T>): Boolean = inner.getIndexOfHashedByValue(key) != null
 
-    fun <Q> containsHashed(key: Hashed<Q>): Boolean where Q : Equivalent<T> {
-        return inner.getIndexOfHashed(key) != null
-    }
+    fun <Q> containsHashed(key: Hashed<Q>): Boolean where Q : Equivalent<T> = inner.getIndexOfHashed(key) != null
 
     /** Insert the element into the set. Return `true` iff the element was inserted. */
-    fun insert(value: T): Boolean {
-        return insertHashed(Hashed.new(value))
-    }
+    fun insert(value: T): Boolean = insertHashed(Hashed.new(value))
 
     /** Insert the element into the set without checking for a duplicate entry. */
     fun insertUniqueUnchecked(value: T) {
         insertHashedUniqueUnchecked(Hashed.new(value))
     }
 
-    fun insertHashed(value: Hashed<T>): Boolean = when (val e = inner.entryHashed(value)) {
-        is Entry.Vacant -> { e.entry.insert(Unit); true }
-        is Entry.Occupied -> false
-    }
+    fun insertHashed(value: Hashed<T>): Boolean =
+        when (val e = inner.entryHashed(value)) {
+            is Entry.Vacant -> {
+                e.entry.insert(Unit)
+                true
+            }
+            is Entry.Occupied -> false
+        }
 
     fun insertHashedUniqueUnchecked(value: Hashed<T>) {
         inner.insertHashedUniqueUnchecked(value, Unit)
@@ -150,13 +147,9 @@ class SmallSet<T> internal constructor(
     /** Remove the element using [Equivalent], and return the removed element. */
     fun <Q> take(value: Q): T? where Q : Equivalent<T> = inner.shiftRemoveEntry(value)?.first
 
-    fun shiftRemoveHashedByValue(value: Hashed<T>): Boolean {
-        return inner.shiftRemoveHashedByValue(value) != null
-    }
+    fun shiftRemoveHashedByValue(value: Hashed<T>): Boolean = inner.shiftRemoveHashedByValue(value) != null
 
-    fun <Q> shiftRemoveHashed(value: Hashed<Q>): Boolean where Q : Equivalent<T> {
-        return inner.shiftRemoveHashed(value) != null
-    }
+    fun <Q> shiftRemoveHashed(value: Hashed<Q>): Boolean where Q : Equivalent<T> = inner.shiftRemoveHashed(value) != null
 
     /**
      * Remove the element from the set if it is present.

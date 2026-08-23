@@ -24,11 +24,10 @@ import kotlin.test.assertEquals
 class InsertionTest {
     @Test
     fun testFindInsertionPoint() {
-        fun findInsertionPointInts(slice: MutableList<Int>): Int {
-            return findInsertionPoint(slice, slice.size - 1) { values, i, j ->
+        fun findInsertionPointInts(slice: MutableList<Int>): Int =
+            findInsertionPoint(slice, slice.size - 1) { values, i, j ->
                 values[i] < values[j]
             }
-        }
 
         assertEquals(0, findInsertionPointInts(mutableListOf(2, 4, 6, 0)))
         assertEquals(0, findInsertionPointInts(mutableListOf(2, 4, 6, 1)))

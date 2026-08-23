@@ -41,7 +41,7 @@ Every matched file is listed below with function and type symbol parity.
 ### 2. hasher
 
 - **Target:** `starlarkmap.Hasher`
-- **Similarity:** 0.76
+- **Similarity:** 0.77
 - **Dependents:** 6
 - **Priority Score:** 6001402.5
 - **Functions:** 11/11 matched
@@ -53,7 +53,7 @@ Every matched file is listed below with function and type symbol parity.
 ### 3. small_map
 
 - **Target:** `smallmap.SmallMap`
-- **Similarity:** 0.50
+- **Similarity:** 0.49
 - **Dependents:** 4
 - **Priority Score:** 4312005.0
 - **Functions:** 84/109 matched (target 111)
@@ -160,7 +160,7 @@ Every matched file is listed below with function and type symbol parity.
 ### 12. mix_u32
 
 - **Target:** `starlarkmap.MixU32`
-- **Similarity:** 0.27
+- **Similarity:** 0.28
 - **Dependents:** 1
 - **Priority Score:** 1000107.2
 - **Functions:** 1/1 matched
@@ -230,7 +230,7 @@ Every matched file is listed below with function and type symbol parity.
 - **Target:** `unorderedset.UnorderedSet`
 - **Similarity:** 0.65
 - **Dependents:** 0
-- **Priority Score:** 22603.5
+- **Priority Score:** 22603.4
 - **Functions:** 19/21 matched (target 26)
 - **Missing functions:** `eq`, `from_iter`
 - **Types:** 5/5 matched (target 8)
@@ -274,9 +274,9 @@ Every matched file is listed below with function and type symbol parity.
 ### 22. hash_value
 
 - **Target:** `starlarkmap.HashValue`
-- **Similarity:** 0.65
+- **Similarity:** 0.66
 - **Dependents:** 0
-- **Priority Score:** 603.5
+- **Priority Score:** 603.4
 - **Functions:** 5/5 matched (target 6)
 - **Missing functions:** _none_
 - **Types:** 1/1 matched
@@ -302,19 +302,6 @@ For each file to be considered "complete":
 - Documentation ported
 - port-lint header present
 
-## Next Commands
-
-```bash
-# Re-run the parity audit from the repo root
-cd /Volumes/stuff/Projects/kotlinmania/starlarkmap-kotlin
-/Volumes/stuff/Projects/kotlinmania/bin/ast_distance --deep tmp/starlark_map/src rust src/commonMain/kotlin/io/github/kotlinmania/starlarkmap kotlin
-
-# Optional: initialize a local task queue for systematic porting
-/Volumes/stuff/Projects/kotlinmania/bin/ast_distance --init-tasks tmp/starlark_map/src rust src/commonMain/kotlin/io/github/kotlinmania/starlarkmap kotlin .cache/ast_distance/tasks.json
-
-# Get next high-priority task
-/Volumes/stuff/Projects/kotlinmania/bin/ast_distance --assign .cache/ast_distance/tasks.json <agent-id>
-```
 ## Reexport / Wiring Modules
 
 These files match `reexport_modules` patterns in `.ast_distance_config.json`. They are filtered out of
@@ -327,3 +314,4 @@ do not treat them as the next implementation target by default.
 | Source | Expected target | Deps | Source path | Expected path |
 |--------|-----------------|------|-------------|---------------|
 | `lib` | `Lib` | 0 | `lib.rs` | `Lib.kt` |
+

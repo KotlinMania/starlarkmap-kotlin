@@ -3,15 +3,13 @@
 
 package io.github.kotlinmania.starlarkmap.unorderedset
 
-import kotlin.native.HiddenFromObjC
-
 /*
  * Copyright 2019 The Starlark in Rust Authors.
  * Copyright (c) Facebook, Inc. and its affiliates.
  * Copyright (c) 2025 Sydney Renee, The Solace Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not import this file except in compliance with the License.
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     https://www.apache.org/licenses/LICENSE-2.0
@@ -26,11 +24,12 @@ import kotlin.native.HiddenFromObjC
 import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
 import io.github.kotlinmania.starlarkmap.StarlarkHashValue
+import io.github.kotlinmania.starlarkmap.unorderedmap.UnorderedMap
+import kotlin.native.HiddenFromObjC
 import io.github.kotlinmania.starlarkmap.unorderedmap.RawEntryBuilderMut as MapRawEntryBuilderMut
 import io.github.kotlinmania.starlarkmap.unorderedmap.RawEntryMut as MapRawEntryMut
 import io.github.kotlinmania.starlarkmap.unorderedmap.RawOccupiedEntryMut as MapRawOccupiedEntryMut
 import io.github.kotlinmania.starlarkmap.unorderedmap.RawVacantEntryMut as MapRawVacantEntryMut
-import io.github.kotlinmania.starlarkmap.unorderedmap.UnorderedMap
 
 /**
  * `HashSet` that does not expose insertion order.
@@ -116,9 +115,7 @@ class UnorderedSet<T> internal constructor(
 /**
  * Get the entries in the set, sorted.
  */
-fun <T : Comparable<T>> UnorderedSet<T>.entriesSorted(): List<T> {
-    return iter().sorted().toList()
-}
+fun <T : Comparable<T>> UnorderedSet<T>.entriesSorted(): List<T> = iter().sorted().toList()
 
 /**
  * Builder for [RawEntryMut].
@@ -131,14 +128,13 @@ class RawEntryBuilderMut<T>(
     /**
      * Find the entry for a key.
      */
-    fun fromEntry(value: T): RawEntryMut<T> {
-        return when (val raw = entry.fromKey(value)) {
+    fun fromEntry(value: T): RawEntryMut<T> =
+        when (val raw = entry.fromKey(value)) {
             is MapRawEntryMut.Occupied ->
                 RawEntryMut.Occupied(RawOccupiedEntryMut(raw.entry))
             is MapRawEntryMut.Vacant ->
                 RawEntryMut.Vacant(RawVacantEntryMut(raw.entry))
         }
-    }
 
     /**
      * Find the entry for a pre-hashed key.
@@ -148,14 +144,13 @@ class RawEntryBuilderMut<T>(
     /**
      * Find the entry by hash and equality function.
      */
-    fun fromHash(hash: StarlarkHashValue, isMatch: (T) -> Boolean): RawEntryMut<T> {
-        return when (val raw = entry.fromHash(hash, isMatch)) {
+    fun fromHash(hash: StarlarkHashValue, isMatch: (T) -> Boolean): RawEntryMut<T> =
+        when (val raw = entry.fromHash(hash, isMatch)) {
             is MapRawEntryMut.Occupied ->
                 RawEntryMut.Occupied(RawOccupiedEntryMut(raw.entry))
             is MapRawEntryMut.Vacant ->
                 RawEntryMut.Vacant(RawVacantEntryMut(raw.entry))
         }
-    }
 }
 
 /**
@@ -166,10 +161,15 @@ class RawEntryBuilderMut<T>(
 sealed class RawEntryMut<T> {
     /** Occupied entry. */
     @HiddenFromObjC
-    class Occupied<T>(val entry: RawOccupiedEntryMut<T>) : RawEntryMut<T>()
+    class Occupied<T>(
+        val entry: RawOccupiedEntryMut<T>,
+    ) : RawEntryMut<T>()
+
     /** Vacant entry. */
     @HiddenFromObjC
-    class Vacant<T>(val entry: RawVacantEntryMut<T>) : RawEntryMut<T>()
+    class Vacant<T>(
+        val entry: RawVacantEntryMut<T>,
+    ) : RawEntryMut<T>()
 }
 
 /**
