@@ -236,7 +236,10 @@ sealed class Entry<K, V> {
     /** Insert a value if vacant, or return the existing value. */
     fun orInsert(defaultValue: V): V =
         when (this) {
-            is Occupied -> entry.get()
+            is Occupied -> {
+                entry.get()
+            }
+
             is Vacant -> {
                 entry.insert(defaultValue)
                 defaultValue
@@ -246,7 +249,10 @@ sealed class Entry<K, V> {
     /** Insert a value computed by a function if vacant, or return the existing value. */
     fun orInsertWith(defaultValue: () -> V): V =
         when (this) {
-            is Occupied -> entry.get()
+            is Occupied -> {
+                entry.get()
+            }
+
             is Vacant -> {
                 val v = defaultValue()
                 entry.insert(v)
@@ -265,11 +271,11 @@ class OccupiedEntry<K, V>(
     private val key: K,
 ) {
     /** Get a reference to the value associated with the entry. */
-    fun get(): V = map.table[key]!!
+    fun get(): V = map.table.getValue(key)
 
     /** Replace the value associated with the entry. Returns the old value. */
     fun insert(value: V): V {
-        val old = map.table[key]!!
+        val old = map.table.getValue(key)
         map.table[key] = value
         return old
     }
@@ -360,11 +366,11 @@ class RawOccupiedEntryMut<K, V>(
     private var key: K,
 ) {
     /** Get a reference to the value. */
-    fun get(): V = map.table[key]!!
+    fun get(): V = map.table.getValue(key)
 
     /** Replace the value. Returns the old value. */
     fun insert(value: V): V {
-        val old = map.table[key]!!
+        val old = map.table.getValue(key)
         map.table[key] = value
         return old
     }
