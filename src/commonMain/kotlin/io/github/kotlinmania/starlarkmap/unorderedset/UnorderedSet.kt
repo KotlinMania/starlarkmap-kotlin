@@ -130,10 +130,13 @@ class RawEntryBuilderMut<T>(
      */
     fun fromEntry(value: T): RawEntryMut<T> =
         when (val raw = entry.fromKey(value)) {
-            is MapRawEntryMut.Occupied ->
+            is MapRawEntryMut.Occupied -> {
                 RawEntryMut.Occupied(RawOccupiedEntryMut(raw.entry))
-            is MapRawEntryMut.Vacant ->
+            }
+
+            is MapRawEntryMut.Vacant -> {
                 RawEntryMut.Vacant(RawVacantEntryMut(raw.entry))
+            }
         }
 
     /**
@@ -146,10 +149,13 @@ class RawEntryBuilderMut<T>(
      */
     fun fromHash(hash: StarlarkHashValue, isMatch: (T) -> Boolean): RawEntryMut<T> =
         when (val raw = entry.fromHash(hash, isMatch)) {
-            is MapRawEntryMut.Occupied ->
+            is MapRawEntryMut.Occupied -> {
                 RawEntryMut.Occupied(RawOccupiedEntryMut(raw.entry))
-            is MapRawEntryMut.Vacant ->
+            }
+
+            is MapRawEntryMut.Vacant -> {
                 RawEntryMut.Vacant(RawVacantEntryMut(raw.entry))
+            }
         }
 }
 

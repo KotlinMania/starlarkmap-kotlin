@@ -165,9 +165,12 @@ class SmallMapTest {
                 is Entry.Vacant -> e.entry.insert(i * 2)
                 is Entry.Occupied -> error("expected vacant")
             }
-            when (val e = map.entry(i)) {
+            when (map.entry(i)) {
                 is Entry.Occupied -> {}
-                is Entry.Vacant -> error("expected occupied")
+
+                is Entry.Vacant -> {
+                    error("expected occupied")
+                }
             }
         }
     }

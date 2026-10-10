@@ -131,7 +131,10 @@ class SmallSet<T> internal constructor(
                 e.entry.insert(Unit)
                 true
             }
-            is Entry.Occupied -> false
+
+            is Entry.Occupied -> {
+                false
+            }
         }
 
     fun insertHashedUniqueUnchecked(value: Hashed<T>) {
@@ -176,7 +179,10 @@ class SmallSet<T> internal constructor(
     fun getOrInsert(value: T): T {
         val hashed = Hashed.new(value)
         return when (val e = inner.entryHashed(hashed)) {
-            is Entry.Occupied -> e.entry.key()
+            is Entry.Occupied -> {
+                e.entry.key()
+            }
+
             is Entry.Vacant -> {
                 e.entry.insert(Unit)
                 value

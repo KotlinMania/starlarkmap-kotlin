@@ -81,7 +81,7 @@ class Vec2Test {
         v.push("a", "b")
         v.push("c", "d")
         v.shrinkToFit()
-        for (unused in 0 until 2) {
+        repeat(2) {
             assertEquals(2, v.len())
             assertEquals(2, v.capacity())
             assertEquals(

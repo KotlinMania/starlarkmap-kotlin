@@ -128,14 +128,8 @@ class OrderedSet<T> internal constructor(
      */
     fun tryInsert(value: T): OccupiedError<T>? {
         val hashed = Hashed.new(value)
-        val existing =
-            inner.getHashed(
-                object : Equivalent<T> {
-                    override fun equivalent(key: T): Boolean = hashed.key() == key
-                }.let { equiv ->
-                    Hashed.newUnchecked(hashed.hash(), equiv)
-                },
-            )
+        val equiv = Equivalent<T> { key -> hashed.key() == key }
+        val existing = inner.getHashed(Hashed.newUnchecked(hashed.hash(), equiv))
         if (existing != null) {
             return OccupiedError(value, existing)
         }
