@@ -1,9 +1,5 @@
 // port-lint: source sorted_vec.rs
-@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
-
 package io.github.kotlinmania.starlarkmap.sortedvec
-
-import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -23,15 +19,18 @@ import kotlin.native.HiddenFromObjC
  * limitations under the License.
  */
 
+import io.github.kotlinmania.allocative.Allocative
+import io.github.kotlinmania.allocative.Visitor
+import io.github.kotlinmania.allocative.key.Key
+
 /**
  * Type which enforces that its elements are sorted. That's it.
  *
  */
-// generic by design: sorted-invariant vector; element param is the public contract.
-@HiddenFromObjC
 class SortedVec<T> private constructor(
     private val vec: MutableList<T>,
-) : Iterable<T> {
+) : Iterable<T>,
+    Allocative {
     interface Item
 
     interface IntoIter
@@ -45,8 +44,8 @@ class SortedVec<T> private constructor(
          *
          * In debug builds, asserts that the list is sorted.
          */
-        fun <T : Comparable<T>> newUnchecked(vec: List<T>): SortedVec<T> {
-            check(vec.zipWithNext().all { (a, b) -> a <= b }) {
+        fun <T : Comparable<*>> newUnchecked(vec: List<T>): SortedVec<T> {
+            check(vec.zipWithNext().all { (a, b) -> compareValues(a, b) <= 0 }) {
                 "SortedVec::new_unchecked called with unsorted elements"
             }
             return SortedVec(vec.toMutableList())
@@ -57,18 +56,18 @@ class SortedVec<T> private constructor(
         /**
          * Create a [SortedVec] from a list, sorting it first.
          */
-        fun <T : Comparable<T>> from(vec: List<T>): SortedVec<T> {
+        fun <T : Comparable<*>> from(vec: List<T>): SortedVec<T> {
             val sorted = vec.toMutableList()
-            sorted.sort()
+            sorted.sortWith(compareBy { it })
             return SortedVec(sorted)
         }
 
         /**
          * Create a [SortedVec] from an iterable, sorting the collected elements.
          */
-        fun <T : Comparable<T>> fromIter(iter: Iterable<T>): SortedVec<T> {
+        fun <T : Comparable<*>> fromIter(iter: Iterable<T>): SortedVec<T> {
             val vec = iter.toMutableList()
-            vec.sort()
+            vec.sortWith(compareBy { it })
             return SortedVec(vec)
         }
     }
@@ -77,6 +76,16 @@ class SortedVec<T> private constructor(
     fun iter(): Sequence<T> = vec.asSequence()
 
     fun intoIter(): Iterator<T> = vec.iterator()
+
+    override fun visit(visitor: Visitor) {
+        val v = visitor.enterSelfSized(SortedVec::class, 24)
+        v.visitFieldWith(Key.new("vec"), 24) { fieldVisitor ->
+            for (elem in vec) {
+                if (elem is Allocative) elem.visit(fieldVisitor)
+            }
+        }
+        v.exit()
+    }
 
     override fun iterator(): Iterator<T> = vec.iterator()
 
@@ -102,11 +111,11 @@ class SortedVec<T> private constructor(
  * Lexicographic comparison, matching Rust's derived `Ord` implementation for
  * `SortedVec<T>` where `T: Ord`.
  */
-operator fun <T : Comparable<T>> SortedVec<T>.compareTo(other: SortedVec<T>): Int {
+operator fun <T : Comparable<*>> SortedVec<T>.compareTo(other: SortedVec<T>): Int {
     val thisIter = iter().iterator()
     val otherIter = other.iter().iterator()
     while (thisIter.hasNext() && otherIter.hasNext()) {
-        val cmp = thisIter.next().compareTo(otherIter.next())
+        val cmp = compareValues(thisIter.next(), otherIter.next())
         if (cmp != 0) return cmp
     }
     return when {

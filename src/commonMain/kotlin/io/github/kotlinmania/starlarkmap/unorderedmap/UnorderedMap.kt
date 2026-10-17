@@ -1,6 +1,4 @@
 // port-lint: source unordered_map.rs
-@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
-
 package io.github.kotlinmania.starlarkmap.unorderedmap
 
 /*
@@ -21,10 +19,12 @@ package io.github.kotlinmania.starlarkmap.unorderedmap
  * limitations under the License.
  */
 
+import io.github.kotlinmania.allocative.Allocative
+import io.github.kotlinmania.allocative.Visitor
+import io.github.kotlinmania.allocative.key.Key
 import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
 import io.github.kotlinmania.starlarkmap.StarlarkHashValue
-import kotlin.native.HiddenFromObjC
 
 /**
  * Hash map which does not expose any insertion order-specific behavior
@@ -32,11 +32,9 @@ import kotlin.native.HiddenFromObjC
  *
  * In Kotlin, we import a [HashMap] which provides the same semantics.
  */
-// generic by design: order-hiding map container; key/value params are the public contract.
-@HiddenFromObjC
 class UnorderedMap<K, V> internal constructor(
     internal val table: HashMap<K, V>,
-) {
+) : Allocative {
     companion object {
         /** Create a new empty map. */
         fun <K, V> new(): UnorderedMap<K, V> = UnorderedMap(HashMap())
@@ -163,9 +161,9 @@ class UnorderedMap<K, V> internal constructor(
     fun valuesUnordered(): Sequence<V> = table.values.asSequence()
 
     /**
-     * Convert into a [HashMap].
+     * Convert into a [Map].
      */
-    fun intoHashMap(): HashMap<K, V> = HashMap(table)
+    fun intoHashMap(): Map<K, V> = HashMap(table)
 
     /**
      * Apply the function to each value.
@@ -183,6 +181,17 @@ class UnorderedMap<K, V> internal constructor(
      */
     operator fun get(key: K, defaultValue: Nothing? = null): V =
         table[key] ?: throw NoSuchElementException("key not found: $key")
+
+    override fun visit(visitor: Visitor) {
+        val v = visitor.enterSelfSized(UnorderedMap::class, 32)
+        v.visitFieldWith(Key.new("table"), 32) { fieldVisitor ->
+            for ((k, value) in table) {
+                if (k is Allocative) k.visit(fieldVisitor)
+                if (value is Allocative) value.visit(fieldVisitor)
+            }
+        }
+        v.exit()
+    }
 
     /**
      * Unordered equality: two maps are equal iff they have the same entries,
@@ -213,22 +222,18 @@ class UnorderedMap<K, V> internal constructor(
 /**
  * Get the entries in the map, sorted by key.
  */
-fun <K : Comparable<K>, V> UnorderedMap<K, V>.entriesSorted(): List<Pair<K, V>> = entriesUnordered().sortedWith(compareBy { it.first }).toList()
+fun <K : Comparable<*>, V> UnorderedMap<K, V>.entriesSorted(): List<Pair<K, V>> = entriesUnordered().sortedWith(compareBy { it.first }).toList()
 
 /**
  * Reference to an entry in a [UnorderedMap].
  */
-// generic by design: map entry handle; key/value params are the public contract.
-@HiddenFromObjC
 sealed class Entry<K, V> {
     /** Occupied entry. */
-    @HiddenFromObjC
     class Occupied<K, V>(
         val entry: OccupiedEntry<K, V>,
     ) : Entry<K, V>()
 
     /** Vacant entry. */
-    @HiddenFromObjC
     class Vacant<K, V>(
         val entry: VacantEntry<K, V>,
     ) : Entry<K, V>()
@@ -264,8 +269,6 @@ sealed class Entry<K, V> {
 /**
  * Reference to an occupied entry in a [UnorderedMap].
  */
-// generic by design: occupied map entry; key/value params are the public contract.
-@HiddenFromObjC
 class OccupiedEntry<K, V>(
     private val map: UnorderedMap<K, V>,
     private val key: K,
@@ -287,8 +290,6 @@ class OccupiedEntry<K, V>(
 /**
  * Reference to a vacant entry in a [UnorderedMap].
  */
-// generic by design: vacant map entry; key/value params are the public contract.
-@HiddenFromObjC
 class VacantEntry<K, V>(
     private val map: UnorderedMap<K, V>,
     private val key: K,
@@ -302,8 +303,6 @@ class VacantEntry<K, V>(
 /**
  * Builder for [RawEntryMut].
  */
-// generic by design: raw entry builder; key/value params are the public contract.
-@HiddenFromObjC
 class RawEntryBuilderMut<K, V>(
     private val map: UnorderedMap<K, V>,
 ) {
@@ -340,17 +339,13 @@ class RawEntryBuilderMut<K, V>(
 /**
  * Raw entry in a [UnorderedMap].
  */
-// generic by design: raw entry handle; key/value params are the public contract.
-@HiddenFromObjC
 sealed class RawEntryMut<K, V> {
     /** Occupied entry. */
-    @HiddenFromObjC
     class Occupied<K, V>(
         val entry: RawOccupiedEntryMut<K, V>,
     ) : RawEntryMut<K, V>()
 
     /** Vacant entry. */
-    @HiddenFromObjC
     class Vacant<K, V>(
         val entry: RawVacantEntryMut<K, V>,
     ) : RawEntryMut<K, V>()
@@ -359,8 +354,6 @@ sealed class RawEntryMut<K, V> {
 /**
  * Reference to an occupied raw entry in a [UnorderedMap].
  */
-// generic by design: occupied raw entry; key/value params are the public contract.
-@HiddenFromObjC
 class RawOccupiedEntryMut<K, V>(
     private val map: UnorderedMap<K, V>,
     private var key: K,
@@ -397,8 +390,6 @@ class RawOccupiedEntryMut<K, V>(
 /**
  * Reference to a vacant raw entry in a [UnorderedMap].
  */
-// generic by design: vacant raw entry; key/value params are the public contract.
-@HiddenFromObjC
 class RawVacantEntryMut<K, V>(
     private val map: UnorderedMap<K, V>,
 ) {

@@ -1,6 +1,4 @@
 // port-lint: source ordered_set.rs
-@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
-
 package io.github.kotlinmania.starlarkmap.orderedset
 
 /*
@@ -21,6 +19,9 @@ package io.github.kotlinmania.starlarkmap.orderedset
  * limitations under the License.
  */
 
+import io.github.kotlinmania.allocative.Allocative
+import io.github.kotlinmania.allocative.Visitor
+import io.github.kotlinmania.allocative.key.Key
 import io.github.kotlinmania.serde.SerdeResult
 import io.github.kotlinmania.serdecore.de.Deserialize
 import io.github.kotlinmania.serdecore.de.Deserializer
@@ -30,7 +31,6 @@ import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
 import io.github.kotlinmania.starlarkmap.smallset.SmallSet
 import io.github.kotlinmania.starlarkmap.smallset.sort
-import kotlin.native.HiddenFromObjC
 
 /**
  * [SmallSet] wrapper, but equality and hash of self depends on iteration order.
@@ -38,12 +38,11 @@ import kotlin.native.HiddenFromObjC
  * Two [OrderedSet]s are equal only when they contain the same elements
  * in the same iteration order.
  */
-// generic by design: insertion-ordered set container; element param is the public contract.
-@HiddenFromObjC
 class OrderedSet<T> internal constructor(
     internal val inner: SmallSet<T>,
 ) : Iterable<T>,
-    Serialize {
+    Serialize,
+    Allocative {
     interface Item
 
     interface IntoIter
@@ -154,7 +153,10 @@ class OrderedSet<T> internal constructor(
      */
     fun tryInsert(value: T): OccupiedError<T>? {
         val hashed = Hashed.new(value)
-        val equiv = Equivalent<T> { key -> hashed.key() == key }
+        val equiv =
+            object : Equivalent<T> {
+                override fun equivalent(key: T): Boolean = hashed.key() == key
+            }
         val existing = inner.getHashed(Hashed.newUnchecked(hashed.hash(), equiv))
         if (existing != null) {
             return OccupiedError(value, existing)
@@ -182,6 +184,12 @@ class OrderedSet<T> internal constructor(
     fun intoIter(): Iterator<T> = inner.intoIter()
 
     override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = inner.serialize(serializer)
+
+    override fun visit(visitor: Visitor) {
+        val v = visitor.enterSelfSized(OrderedSet::class, 32)
+        v.visitField(Key.new("0"), 32, inner)
+        v.exit()
+    }
 
     override fun iterator(): Iterator<T> = inner.iterator()
 
@@ -223,8 +231,6 @@ fun <T> orderedSetOf(vararg elements: T): OrderedSet<T> {
 /**
  * Error returned by [OrderedSet.tryInsert] when the element is already present.
  */
-// generic by design: try-insert error carrying the rejected element.
-@HiddenFromObjC
 class OccupiedError<T>(
     /** The value that was not inserted. */
     val value: T,
@@ -235,16 +241,16 @@ class OccupiedError<T>(
 /**
  * Sort the set.
  */
-fun <T : Comparable<T>> OrderedSet<T>.sort() = inner.sort()
+fun <T : Comparable<*>> OrderedSet<T>.sort() = inner.sort()
 
 /**
  * Compare two [OrderedSet]s lexicographically by their iteration order.
  */
-operator fun <T : Comparable<T>> OrderedSet<T>.compareTo(other: OrderedSet<T>): Int {
+operator fun <T : Comparable<*>> OrderedSet<T>.compareTo(other: OrderedSet<T>): Int {
     val thisIter = iter().iterator()
     val otherIter = other.iter().iterator()
     while (thisIter.hasNext() && otherIter.hasNext()) {
-        val cmp = thisIter.next().compareTo(otherIter.next())
+        val cmp = compareValues(thisIter.next(), otherIter.next())
         if (cmp != 0) return cmp
     }
     return when {

@@ -1,6 +1,4 @@
 // port-lint: source small_set.rs
-@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
-
 package io.github.kotlinmania.starlarkmap.smallset
 
 /*
@@ -21,6 +19,8 @@ package io.github.kotlinmania.starlarkmap.smallset
  * limitations under the License.
  */
 
+import io.github.kotlinmania.allocative.Allocative
+import io.github.kotlinmania.allocative.key.Key
 import io.github.kotlinmania.serde.SerdeResult
 import io.github.kotlinmania.serde.serdeCatching
 import io.github.kotlinmania.serdecore.de.Deserialize
@@ -36,19 +36,18 @@ import io.github.kotlinmania.starlarkmap.smallmap.Entry
 import io.github.kotlinmania.starlarkmap.smallmap.SmallMap
 import io.github.kotlinmania.starlarkmap.smallmap.sortKeys
 import io.github.kotlinmania.starlarkmap.smallmap.wrapSerialize
-import kotlin.native.HiddenFromObjC
+import io.github.kotlinmania.allocative.Visitor as AllocativeVisitor
 
 /**
  * A set with deterministic iteration order.
  *
  * Wraps [SmallMap] with `Unit` as the value type.
  */
-// generic by design: order-preserving set container; element param is the public contract.
-@HiddenFromObjC
 class SmallSet<T> internal constructor(
     internal val inner: SmallMap<T, Unit>,
 ) : Iterable<T>,
-    Serialize {
+    Serialize,
+    Allocative {
     interface Item
 
     interface IntoIter
@@ -324,6 +323,12 @@ class SmallSet<T> internal constructor(
             seq.end().getOrThrow()
         }
 
+    override fun visit(visitor: AllocativeVisitor) {
+        val v = visitor.enterSelfSized(SmallSet::class, 32)
+        v.visitField(Key.new("0"), 32, inner)
+        v.exit()
+    }
+
     /**
      * Two sets are equal if they contain the same elements regardless of iteration order,
      * mirroring the upstream `PartialEq` impl on [SmallMap].
@@ -363,8 +368,6 @@ fun <T> smallSetOf(vararg elements: T): SmallSet<T> {
 }
 
 /** Iterator over the difference of two sets. */
-// generic by design: set-difference iterator; element param is the public contract.
-@HiddenFromObjC
 class Difference<T> internal constructor(
     private val iter: Iterator<T>,
     private val source: SmallSet<T>,
@@ -410,8 +413,6 @@ class Difference<T> internal constructor(
 }
 
 /** Iterator over a union of two sets. */
-// generic by design: set-union iterator; element param is the public contract.
-@HiddenFromObjC
 class Union<T> internal constructor(
     private val first: Iterator<T>,
     private val second: Difference<T>,
@@ -422,6 +423,6 @@ class Union<T> internal constructor(
 }
 
 /** Sort entries. */
-fun <T : Comparable<T>> SmallSet<T>.sort() {
+fun <T : Comparable<*>> SmallSet<T>.sort() {
     inner.sortKeys()
 }

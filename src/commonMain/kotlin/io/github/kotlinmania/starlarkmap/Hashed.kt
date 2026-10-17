@@ -1,9 +1,5 @@
 // port-lint: source hashed.rs
-@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
-
 package io.github.kotlinmania.starlarkmap
-
-import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -22,15 +18,21 @@ import kotlin.native.HiddenFromObjC
  * limitations under the License.
  */
 
+import io.github.kotlinmania.allocative.Allocative
+import io.github.kotlinmania.allocative.Visitor
+import io.github.kotlinmania.allocative.key.Key
+import io.github.kotlinmania.gazebo.dupe.Dupe
+import io.github.kotlinmania.gazebo.stronghash.StrongHash
+import io.github.kotlinmania.gazebo.stronghash.StrongHasher
+
 /**
  * A key and its hash.
  */
-// generic by design: hash-cached key wrapper; type param is the public contract.
-@HiddenFromObjC
 class Hashed<K> private constructor(
     internal val hash: StarlarkHashValue,
     internal val key: K,
-) {
+) : Dupe,
+    Allocative {
     companion object {
         /**
          * Create a new [Hashed] value using the weak hash of the key.
@@ -121,6 +123,16 @@ class Hashed<K> private constructor(
         return newUnchecked(hash, key)
     }
 
+    override fun visit(visitor: Visitor) {
+        val v = visitor.enterSelfSized(Hashed::class, 16)
+        v.visitField(Key.new("hash"), 4, hash)
+        val k = key
+        if (k is Allocative) {
+            v.visitField(Key.new("key"), 8, k)
+        }
+        v.exit()
+    }
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is Hashed<*>) return false
@@ -140,10 +152,10 @@ private fun Any?.fmt(f: Appendable): Appendable {
     return f
 }
 
-fun <K : StrongHash> Hashed<K>.strongHash(state: StarlarkHasher) {
+fun <K : StrongHash> Hashed<K>.strongHash(state: StrongHasher) {
     key().strongHash(state)
 }
 
-fun <K : Comparable<K>> Hashed<K>.partialCmp(other: Hashed<K>): Int? = key().compareTo(other.key())
+fun <K : Comparable<*>> Hashed<K>.partialCmp(other: Hashed<K>): Int? = compareValues(key(), other.key())
 
-fun <K : Comparable<K>> Hashed<K>.cmp(other: Hashed<K>): Int = key().compareTo(other.key())
+fun <K : Comparable<*>> Hashed<K>.cmp(other: Hashed<K>): Int = compareValues(key(), other.key())

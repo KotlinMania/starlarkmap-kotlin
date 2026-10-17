@@ -1,6 +1,4 @@
 // port-lint: source unordered_set.rs
-@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
-
 package io.github.kotlinmania.starlarkmap.unorderedset
 
 /*
@@ -21,11 +19,13 @@ package io.github.kotlinmania.starlarkmap.unorderedset
  * limitations under the License.
  */
 
+import io.github.kotlinmania.allocative.Allocative
+import io.github.kotlinmania.allocative.Visitor
+import io.github.kotlinmania.allocative.key.Key
 import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
 import io.github.kotlinmania.starlarkmap.StarlarkHashValue
 import io.github.kotlinmania.starlarkmap.unorderedmap.UnorderedMap
-import kotlin.native.HiddenFromObjC
 import io.github.kotlinmania.starlarkmap.unorderedmap.RawEntryBuilderMut as MapRawEntryBuilderMut
 import io.github.kotlinmania.starlarkmap.unorderedmap.RawEntryMut as MapRawEntryMut
 import io.github.kotlinmania.starlarkmap.unorderedmap.RawOccupiedEntryMut as MapRawOccupiedEntryMut
@@ -36,11 +36,9 @@ import io.github.kotlinmania.starlarkmap.unorderedmap.RawVacantEntryMut as MapRa
  *
  * In Kotlin, we wrap [UnorderedMap]<T, [Unit]> to maintain the same structure.
  */
-// generic by design: order-hiding set container; element param is the public contract.
-@HiddenFromObjC
 class UnorderedSet<T> internal constructor(
     private val map: UnorderedMap<T, Unit>,
-) {
+) : Allocative {
     companion object {
         /** Create a new empty set. */
         fun <T> new(): UnorderedSet<T> = UnorderedSet(UnorderedMap.new())
@@ -97,6 +95,12 @@ class UnorderedSet<T> internal constructor(
     /** Iterate over the values in the set (private). */
     internal fun iter(): Sequence<T> = map.keysUnordered()
 
+    override fun visit(visitor: Visitor) {
+        val v = visitor.enterSelfSized(UnorderedSet::class, 32)
+        v.visitField(Key.new("map"), 32, map)
+        v.exit()
+    }
+
     /**
      * Unordered equality: two sets are equal iff they have the same elements,
      * regardless of iteration order.
@@ -115,14 +119,12 @@ class UnorderedSet<T> internal constructor(
 /**
  * Get the entries in the set, sorted.
  */
-fun <T : Comparable<T>> UnorderedSet<T>.entriesSorted(): List<T> = iter().sorted().toList()
+fun <T : Comparable<*>> UnorderedSet<T>.entriesSorted(): List<T> = iter().sortedWith(compareBy { it }).toList()
 
 /**
  * Builder for [RawEntryMut].
  */
-// generic by design: raw set-entry builder; element param is the public contract.
-@HiddenFromObjC
-class RawEntryBuilderMut<T>(
+class RawEntryBuilderMut<T> internal constructor(
     private val entry: MapRawEntryBuilderMut<T, Unit>,
 ) {
     /**
@@ -162,17 +164,13 @@ class RawEntryBuilderMut<T>(
 /**
  * Reference to an entry in a [UnorderedSet].
  */
-// generic by design: raw set-entry handle; element param is the public contract.
-@HiddenFromObjC
 sealed class RawEntryMut<T> {
     /** Occupied entry. */
-    @HiddenFromObjC
     class Occupied<T>(
         val entry: RawOccupiedEntryMut<T>,
     ) : RawEntryMut<T>()
 
     /** Vacant entry. */
-    @HiddenFromObjC
     class Vacant<T>(
         val entry: RawVacantEntryMut<T>,
     ) : RawEntryMut<T>()
@@ -181,9 +179,7 @@ sealed class RawEntryMut<T> {
 /**
  * Reference to an occupied entry in a [UnorderedSet].
  */
-// generic by design: occupied raw set-entry; element param is the public contract.
-@HiddenFromObjC
-class RawOccupiedEntryMut<T>(
+class RawOccupiedEntryMut<T> internal constructor(
     private val entry: MapRawOccupiedEntryMut<T, Unit>,
 ) {
     /** Remove the entry. */
@@ -196,9 +192,7 @@ class RawOccupiedEntryMut<T>(
 /**
  * Reference to a vacant entry in a [UnorderedSet].
  */
-// generic by design: vacant raw set-entry; element param is the public contract.
-@HiddenFromObjC
-class RawVacantEntryMut<T>(
+class RawVacantEntryMut<T> internal constructor(
     private val entry: MapRawVacantEntryMut<T, Unit>,
 ) {
     /** Insert an entry to the set. Computes the hash of the key. */

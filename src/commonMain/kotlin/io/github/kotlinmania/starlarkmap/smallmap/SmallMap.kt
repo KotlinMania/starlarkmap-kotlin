@@ -1,6 +1,4 @@
 // port-lint: source small_map.rs
-@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
-
 package io.github.kotlinmania.starlarkmap.smallmap
 
 /*
@@ -20,6 +18,8 @@ package io.github.kotlinmania.starlarkmap.smallmap
  * limitations under the License.
  */
 
+import io.github.kotlinmania.allocative.Allocative
+import io.github.kotlinmania.allocative.key.Key
 import io.github.kotlinmania.serde.SerdeResult
 import io.github.kotlinmania.serde.serdeCatching
 import io.github.kotlinmania.serdecore.de.Deserialize
@@ -34,7 +34,7 @@ import io.github.kotlinmania.starlarkmap.StarlarkHashValue
 import io.github.kotlinmania.starlarkmap.StarlarkHasher
 import io.github.kotlinmania.starlarkmap.vecmap.VecMap
 import io.github.kotlinmania.starlarkmap.vecmap.isSortedByKey
-import kotlin.native.HiddenFromObjC
+import io.github.kotlinmania.allocative.Visitor as AllocativeVisitor
 import io.github.kotlinmania.starlarkmap.vecmap.sortKeys as vecMapSortKeys
 
 /**
@@ -53,8 +53,6 @@ import io.github.kotlinmania.starlarkmap.vecmap.sortKeys as vecMapSortKeys
  */
 private const val NO_INDEX_THRESHOLD: Int = 16
 
-// generic by design: full map entry record; key/value params are the public contract.
-@HiddenFromObjC
 data class SmallMapFullEntry<K, V>(
     val index: Int,
     val key: K,
@@ -64,8 +62,6 @@ data class SmallMapFullEntry<K, V>(
 /**
  * A map with deterministic iteration order.
  */
-// generic by design: order-preserving map container; key/value params are the public contract.
-@HiddenFromObjC
 class SmallMap<K, V> internal constructor(
     internal val entries: VecMap<K, V>,
     /**
@@ -75,7 +71,8 @@ class SmallMap<K, V> internal constructor(
      */
     internal var index: HashMap<StarlarkHashValue, MutableList<Int>>? = null,
 ) : Iterable<Pair<K, V>>,
-    Serialize {
+    Serialize,
+    Allocative {
     interface Item
 
     interface IntoIter
@@ -626,6 +623,12 @@ class SmallMap<K, V> internal constructor(
             idx.getOrPut(k.hash()) { mutableListOf() }.add(i)
         }
     }
+
+    override fun visit(visitor: AllocativeVisitor) {
+        val v = visitor.enterSelfSized(SmallMap::class, 32)
+        v.visitField(Key.new("entries"), 24, entries)
+        v.exit()
+    }
 }
 
 private fun formatDebug(value: Any?): String =
@@ -637,8 +640,6 @@ private fun formatDebug(value: Any?): String =
     }
 
 /** Reference to the actual entry in the map. */
-// generic by design: occupied map entry; key/value params are the public contract.
-@HiddenFromObjC
 class OccupiedEntry<K, V> internal constructor(
     private val map: SmallMap<K, V>,
     private val index: Int,
@@ -669,8 +670,6 @@ class OccupiedEntry<K, V> internal constructor(
 }
 
 /** Reference to a vacant entry in the map. */
-// generic by design: vacant map entry; key/value params are the public contract.
-@HiddenFromObjC
 class VacantEntry<K, V> internal constructor(
     private val map: SmallMap<K, V>,
     private val keyHashed: Hashed<K>,
@@ -697,17 +696,13 @@ class VacantEntry<K, V> internal constructor(
 }
 
 /** Occupied or vacant entry. */
-// generic by design: map entry handle; key/value params are the public contract.
-@HiddenFromObjC
 sealed class Entry<K, V> {
     /** Occupied entry. */
-    @HiddenFromObjC
     class Occupied<K, V>(
         val entry: OccupiedEntry<K, V>,
     ) : Entry<K, V>()
 
     /** No entry for given key. */
-    @HiddenFromObjC
     class Vacant<K, V>(
         val entry: VacantEntry<K, V>,
     ) : Entry<K, V>()
@@ -748,10 +743,10 @@ sealed class Entry<K, V> {
 }
 
 /** Check if entries are sorted by key. */
-fun <K : Comparable<K>, V> SmallMap<K, V>.isSortedByKey(): Boolean = entries.isSortedByKey()
+fun <K : Comparable<*>, V> SmallMap<K, V>.isSortedByKey(): Boolean = entries.isSortedByKey()
 
 /** Sort entries by key. */
-fun <K : Comparable<K>, V> SmallMap<K, V>.sortKeys() {
+fun <K : Comparable<*>, V> SmallMap<K, V>.sortKeys() {
     if (isSortedByKey()) {
         return
     }
@@ -763,9 +758,7 @@ fun <K : Comparable<K>, V> SmallMap<K, V>.sortKeys() {
     }
 }
 
-// generic by design: mutable value reference; value param is the public contract.
-@HiddenFromObjC
-class MutableValueRef<V>(
+class MutableValueRef<V> internal constructor(
     get: () -> V,
     set: (V) -> Unit,
 ) {

@@ -18,6 +18,7 @@
   "reexport_modules": [
     "mod.rs",
     "lib.rs",
-    "iter.rs"
+    "iter.rs",
+    "sorting.rs"
   ]
 }

@@ -19,6 +19,9 @@ package io.github.kotlinmania.starlarkmap.vecmap
  * limitations under the License.
  */
 
+import io.github.kotlinmania.allocative.Allocative
+import io.github.kotlinmania.allocative.Visitor
+import io.github.kotlinmania.allocative.key.Key
 import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
 import io.github.kotlinmania.starlarkmap.StarlarkHashValue
@@ -27,13 +30,19 @@ import io.github.kotlinmania.starlarkmap.vecmap.simd.findHashInArray
 
 internal class VecMap<K, V> private constructor(
     internal val buckets: Vec2<Pair<K, V>, StarlarkHashValue>,
-) {
+) : Allocative {
     companion object {
         fun <K, V> new(): VecMap<K, V> = VecMap(Vec2.new())
 
         fun <K, V> default(): VecMap<K, V> = new()
 
         fun <K, V> withCapacity(n: Int): VecMap<K, V> = VecMap(Vec2.withCapacity(n))
+    }
+
+    override fun visit(visitor: Visitor) {
+        val v = visitor.enterSelfSized(VecMap::class, 24)
+        v.visitField(Key.new("buckets"), 24, buckets)
+        v.exit()
     }
 
     fun reserve(additional: Int) {
@@ -181,15 +190,15 @@ internal class VecMap<K, V> private constructor(
     }
 }
 
-internal fun <K : Comparable<K>, V> VecMap<K, V>.sortKeys() {
-    buckets.sortBy { (a, _), (b, _) -> a.first.compareTo(b.first) }
+internal fun <K : Comparable<*>, V> VecMap<K, V>.sortKeys() {
+    buckets.sortBy { (a, _), (b, _) -> compareValues(a.first, b.first) }
 }
 
-internal fun <K : Comparable<K>, V> VecMap<K, V>.isSortedByKey(): Boolean {
+internal fun <K : Comparable<*>, V> VecMap<K, V>.isSortedByKey(): Boolean {
     // Check if all consecutive pairs are in sorted order.
     return buckets
         .firstElements()
         .asSequence()
         .windowed(2)
-        .all { (a, b) -> a.first <= b.first }
+        .all { (a, b) -> compareValues(a.first, b.first) <= 0 }
 }

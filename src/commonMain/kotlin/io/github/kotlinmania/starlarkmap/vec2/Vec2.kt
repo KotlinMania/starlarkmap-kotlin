@@ -1,6 +1,4 @@
 // port-lint: source vec2.rs
-@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
-
 package io.github.kotlinmania.starlarkmap.vec2
 
 /*
@@ -21,9 +19,11 @@ package io.github.kotlinmania.starlarkmap.vec2
  * limitations under the License.
  */
 
+import io.github.kotlinmania.allocative.Allocative
+import io.github.kotlinmania.allocative.Visitor
+import io.github.kotlinmania.allocative.key.Key
 import io.github.kotlinmania.starlarkmap.sorting.insertion.insertionSort
 import io.github.kotlinmania.starlarkmap.sorting.insertion.sliceSwapShift
-import kotlin.native.HiddenFromObjC
 
 /**
  * A `List<Pair<A, B>>`-like object which stores `A` and `B` separately.
@@ -31,12 +31,10 @@ import kotlin.native.HiddenFromObjC
  * Kotlin commonMain does not provide low-level allocation APIs, so this port preserves the
  * same observable behaviour using two parallel [ArrayList]s.
  */
-// generic by design: struct-of-arrays pair vector; element params are the public contract.
-@HiddenFromObjC
 class Vec2<A, B> private constructor(
     private val a: ArrayList<A>,
     private val b: ArrayList<B>,
-) {
+) : Allocative {
     companion object {
         fun <A, B> new(): Vec2<A, B> = Vec2(ArrayList(), ArrayList())
 
@@ -50,7 +48,8 @@ class Vec2<A, B> private constructor(
     fun capacity(): Int = a.size
 
     fun reserve(additional: Int) {
-        // No-op in this Kotlin implementation.
+        a.ensureCapacity(a.size + additional)
+        b.ensureCapacity(b.size + additional)
     }
 
     fun clear() {
@@ -80,13 +79,13 @@ class Vec2<A, B> private constructor(
     fun get(index: Int): Pair<A, B>? =
         if (index in 0 until len()) getUnchecked(index) else null
 
-    fun firstElements(): List<A> = a
+    internal fun firstElements(): List<A> = a
 
-    fun firstElementsMut(): MutableList<A> = a
+    internal fun firstElementsMut(): MutableList<A> = a
 
-    fun secondElements(): List<B> = b
+    internal fun secondElements(): List<B> = b
 
-    fun secondElementsMut(): MutableList<B> = b
+    internal fun secondElementsMut(): MutableList<B> = b
 
     /** Read entry at index without bounds checking — caller must ensure `index < len()`. */
     fun getUnchecked(index: Int): Pair<A, B> = Pair(a[index], b[index])
@@ -155,6 +154,23 @@ class Vec2<A, B> private constructor(
                 sliceSwapShift(vec.b, ai, bi)
             },
         )
+    }
+
+    override fun visit(visitor: Visitor) {
+        val v = visitor.enterSelfSized(Vec2::class, 24)
+        if (capacity() != 0) {
+            val ptrVisitor = v.enterUnique(Key.new("ptr"), 8)
+            val dataVisitor = ptrVisitor.enter(Key.new("data"), capacity() * 16)
+            for (i in a.indices) {
+                val aa = a[i]
+                val bb = b[i]
+                if (aa is Allocative) aa.visit(dataVisitor)
+                if (bb is Allocative) bb.visit(dataVisitor)
+            }
+            dataVisitor.exit()
+            ptrVisitor.exit()
+        }
+        v.exit()
     }
 
     override fun equals(other: Any?): Boolean {

@@ -5,9 +5,9 @@ Based on AST analysis, here are the concrete next steps.
 ## Summary
 
 - **Files Present:** 22/25 (88.0%)
-- **Function parity:** 482/597 matched (target 727) — 80.7%
+- **Function parity:** 483/597 matched (target 741) — 80.9%
 - **Class/type parity:** 82/100 matched (target 108) — 82.0%
-- **Combined symbol parity:** 564/697 matched (target 835) — 80.9%
+- **Combined symbol parity:** 565/697 matched (target 849) — 81.1%
 - **Average inline-code cosine:** 0.25 (function body across 22 matched files)
 - **Average documentation cosine:** 0.61 (doc text across 22 matched files)
 - **Cheat-zeroed Files:** 0
@@ -18,10 +18,10 @@ Based on AST analysis, here are the concrete next steps.
 ## Priority 1: Fix Incomplete High-Dependency Files
 
 ### 1. hashed
-- **Similarity:** 0.23 (needs 62% improvement)
+- **Similarity:** 0.22 (needs 63% improvement)
 - **Dependencies:** 10
 - **Priority Score:** 10011808.0
-- **Functions:** 16/16 matched (target 20)
+- **Functions:** 16/16 matched (target 21)
 - **Missing functions:** _none_
 - **Types:** 1/2 matched (target 1)
 - **Missing types:** `Target`
@@ -41,10 +41,10 @@ Every matched file is listed below with function and type symbol parity.
 ### 1. hashed
 
 - **Target:** `starlarkmap.Hashed`
-- **Similarity:** 0.23
+- **Similarity:** 0.22
 - **Dependents:** 10
 - **Priority Score:** 10011808.0
-- **Functions:** 16/16 matched (target 20)
+- **Functions:** 16/16 matched (target 21)
 - **Missing functions:** _none_
 - **Types:** 1/2 matched (target 1)
 - **Missing types:** `Target`
@@ -59,7 +59,6 @@ Every matched file is listed below with function and type symbol parity.
 - **Missing functions:** _none_
 - **Types:** 3/3 matched (target 4)
 - **Missing types:** _none_
-- **TODOs:** 1
 
 ### 3. small_map
 
@@ -67,7 +66,7 @@ Every matched file is listed below with function and type symbol parity.
 - **Similarity:** 0.19
 - **Dependents:** 4
 - **Priority Score:** 4113108.2
-- **Functions:** 110/120 matched (target 156)
+- **Functions:** 110/120 matched (target 157)
 - **Missing functions:** `assert_invariants`, `state_check`, `drop`, `from_iter`, `into_iter`, `into_iter`, `into_iter`, `hash`, `partial_cmp`, `cmp`
 - **Types:** 11/11 matched (target 17)
 - **Missing types:** _none_
@@ -78,13 +77,12 @@ Every matched file is listed below with function and type symbol parity.
 - **Target:** `vec2.Vec2`
 - **Similarity:** 0.08
 - **Dependents:** 3
-- **Priority Score:** 3477809.2
-- **Functions:** 30/68 matched (target 38)
-- **Missing functions:** `new_checked`, `alloc`, `dealloc`, `pagable_serialize`, `pagable_deserialize`, `serialize`, `deserialize`, `expecting`, `visit_seq`, `default`, `fmt`, `clone`, `new`, `aaa_ptr`, `bbb_ptr`, `aaa`, `aaa_mut`, `aaa_uninit`, `bbb`, `bbb_mut`, `bbb_uninit`, `reserve_slow`, `dealloc_impl`, `dealloc`, `drop_in_place`, `get_mut`, `get_unchecked_mut`, `read`, `drop`, `drop`, `drop`, `into_iter`, `eq`, `hash`, `visit`, `test_layout_for`, `test_alloc_dealloc`, `test_alignment`
+- **Priority Score:** 3467809.2
+- **Functions:** 31/68 matched (target 39)
+- **Missing functions:** `new_checked`, `alloc`, `dealloc`, `pagable_serialize`, `pagable_deserialize`, `serialize`, `deserialize`, `expecting`, `visit_seq`, `default`, `fmt`, `clone`, `new`, `aaa_ptr`, `bbb_ptr`, `aaa`, `aaa_mut`, `aaa_uninit`, `bbb`, `bbb_mut`, `bbb_uninit`, `reserve_slow`, `dealloc_impl`, `dealloc`, `drop_in_place`, `get_mut`, `get_unchecked_mut`, `read`, `drop`, `drop`, `drop`, `into_iter`, `eq`, `hash`, `test_layout_for`, `test_alloc_dealloc`, `test_alignment`
 - **Types:** 1/10 matched (target 2)
 - **Missing types:** `Vec2Layout`, `Vec2Visitor`, `Value`, `DropInPlace`, `Retain`, `Item`, `IntoIter`, `Align16`, `Align8`
 - **Tests:** 9/12 matched
-- **Lint issues:** 1
 
 ### 5. small_set
 
@@ -92,7 +90,7 @@ Every matched file is listed below with function and type symbol parity.
 - **Similarity:** 0.17
 - **Dependents:** 2
 - **Priority Score:** 2037708.2
-- **Functions:** 68/70 matched (target 90)
+- **Functions:** 68/70 matched (target 91)
 - **Missing functions:** `into_iter`, `size_hint`
 - **Types:** 6/7 matched (target 9)
 - **Missing types:** `Value`
@@ -103,8 +101,8 @@ Every matched file is listed below with function and type symbol parity.
 - **Target:** `vecmap.VecMap`
 - **Similarity:** 0.19
 - **Dependents:** 2
-- **Priority Score:** 2003308.0
-- **Functions:** 32/32 matched (target 36)
+- **Priority Score:** 2003308.1
+- **Functions:** 32/32 matched (target 37)
 - **Missing functions:** _none_
 - **Types:** 1/1 matched
 - **Missing types:** _none_
@@ -115,7 +113,7 @@ Every matched file is listed below with function and type symbol parity.
 - **Similarity:** 0.09
 - **Dependents:** 1
 - **Priority Score:** 1176309.0
-- **Functions:** 38/54 matched (target 49)
+- **Functions:** 38/54 matched (target 50)
 - **Missing functions:** `get_hashed`, `get_mut`, `entries_unordered_mut`, `values_unordered_mut`, `into_entries_unordered`, `index`, `fmt`, `eq`, `hash`, `from_iter`, `pagable_serialize`, `pagable_deserialize`, `get_mut`, `get_mut`, `key_mut`, `hash`
 - **Types:** 8/9 matched (target 11)
 - **Missing types:** `Output`
@@ -127,7 +125,7 @@ Every matched file is listed below with function and type symbol parity.
 - **Similarity:** 0.21
 - **Dependents:** 1
 - **Priority Score:** 1083907.9
-- **Functions:** 26/33 matched (target 45)
+- **Functions:** 26/33 matched (target 47)
 - **Missing functions:** `eq`, `partial_cmp`, `cmp`, `hash`, `into_iter`, `eq`, `hash`
 - **Types:** 5/6 matched (target 7)
 - **Missing types:** `Iter`
@@ -139,7 +137,7 @@ Every matched file is listed below with function and type symbol parity.
 - **Similarity:** 0.21
 - **Dependents:** 1
 - **Priority Score:** 1044207.9
-- **Functions:** 34/38 matched (target 63)
+- **Functions:** 34/38 matched (target 64)
 - **Missing functions:** `into_iter`, `into_iter`, `eq`, `hash`
 - **Types:** 4/4 matched (target 5)
 - **Missing types:** _none_
@@ -148,10 +146,10 @@ Every matched file is listed below with function and type symbol parity.
 ### 10. sorted_vec
 
 - **Target:** `sortedvec.SortedVec`
-- **Similarity:** 0.20
+- **Similarity:** 0.17
 - **Dependents:** 1
-- **Priority Score:** 1001008.0
-- **Functions:** 7/7 matched (target 13)
+- **Priority Score:** 1001008.3
+- **Functions:** 7/7 matched (target 14)
 - **Missing functions:** _none_
 - **Types:** 3/3 matched (target 4)
 - **Missing types:** _none_
@@ -196,7 +194,7 @@ Every matched file is listed below with function and type symbol parity.
 - **Similarity:** 0.27
 - **Dependents:** 0
 - **Priority Score:** 22807.3
-- **Functions:** 21/23 matched (target 26)
+- **Functions:** 21/23 matched (target 27)
 - **Missing functions:** `eq`, `from_iter`
 - **Types:** 5/5 matched (target 8)
 - **Missing types:** _none_
@@ -208,7 +206,7 @@ Every matched file is listed below with function and type symbol parity.
 - **Similarity:** 0.29
 - **Dependents:** 0
 - **Priority Score:** 22607.1
-- **Functions:** 21/23 matched (target 35)
+- **Functions:** 21/23 matched (target 36)
 - **Missing functions:** `into_iter`, `into_iter`
 - **Types:** 3/3 matched (target 4)
 - **Missing types:** _none_
@@ -254,7 +252,7 @@ Every matched file is listed below with function and type symbol parity.
 - **Similarity:** 0.38
 - **Dependents:** 0
 - **Priority Score:** 11906.2
-- **Functions:** 15/16 matched (target 32)
+- **Functions:** 15/16 matched (target 33)
 - **Missing functions:** `into_iter`
 - **Types:** 3/3 matched (target 4)
 - **Missing types:** _none_
@@ -274,10 +272,10 @@ Every matched file is listed below with function and type symbol parity.
 ### 21. hash_value
 
 - **Target:** `starlarkmap.HashValue`
-- **Similarity:** 0.34
+- **Similarity:** 0.36
 - **Dependents:** 0
-- **Priority Score:** 606.6
-- **Functions:** 5/5 matched (target 6)
+- **Priority Score:** 606.4
+- **Functions:** 5/5 matched (target 7)
 - **Missing functions:** _none_
 - **Types:** 1/1 matched (target 2)
 - **Missing types:** _none_
@@ -315,4 +313,5 @@ do not treat them as the next implementation target by default.
 |--------|-----------------|------|-------------|---------------|
 | `iter` | `Iter` | 4 | `iter.rs` | `Iter.kt` |
 | `lib` | `Lib` | 0 | `lib.rs` | `Lib.kt` |
+| `sorting` | `sorting.Sorting` | 0 | `sorting.rs` | `sorting/Sorting.kt` |
 
