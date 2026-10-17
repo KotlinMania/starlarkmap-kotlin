@@ -1,9 +1,5 @@
 // port-lint: source vec2/iter.rs
-@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
-
 package io.github.kotlinmania.starlarkmap.vec2.iter
-
-import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -31,8 +27,6 @@ import kotlin.native.HiddenFromObjC
  * In addition to standard [Iterator] operations, provides [len], [sizeHint],
  * and [nextBack] for reverse iteration.
  */
-// generic by design: paired-element iterator; element params are the public contract.
-@HiddenFromObjC
 class Iter<A, B>(
     private val firstElements: List<A>,
     private val secondElements: List<B>,
@@ -76,8 +70,6 @@ class Iter<A, B>(
  * In addition to standard [Iterator] operations, provides [len], [sizeHint],
  * and [nextBack] for reverse iteration.
  */
-// generic by design: consuming paired-element iterator; element params are the public contract.
-@HiddenFromObjC
 class IntoIter<A, B>(
     private val firstElements: List<A>,
     private val secondElements: List<B>,

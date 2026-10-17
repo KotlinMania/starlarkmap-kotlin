@@ -1,8 +1,4 @@
-@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
-
 package io.github.kotlinmania.starlarkmap
-
-import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -27,9 +23,7 @@ import kotlin.native.HiddenFromObjC
  * implementing `Equivalent<K>` can be used to look up entries keyed by
  * `K`, without requiring `Q` and `K` to be the same type.
  */
-// generic by design: heterogeneous-key lookup SAM; type param is the public contract.
-@HiddenFromObjC
-fun interface Equivalent<in K> {
+interface Equivalent<in K> {
     /**
      * Compare this value with a key for equivalence.
      *

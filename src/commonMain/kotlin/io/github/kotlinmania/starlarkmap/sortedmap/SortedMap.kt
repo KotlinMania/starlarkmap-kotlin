@@ -1,6 +1,4 @@
 // port-lint: source sorted_map.rs
-@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
-
 package io.github.kotlinmania.starlarkmap.sortedmap
 
 /*
@@ -21,6 +19,9 @@ package io.github.kotlinmania.starlarkmap.sortedmap
  * limitations under the License.
  */
 
+import io.github.kotlinmania.allocative.Allocative
+import io.github.kotlinmania.allocative.Visitor
+import io.github.kotlinmania.allocative.key.Key
 import io.github.kotlinmania.serde.SerdeResult
 import io.github.kotlinmania.serdecore.de.Deserialize
 import io.github.kotlinmania.serdecore.de.Deserializer
@@ -30,59 +31,57 @@ import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.orderedmap.OrderedMap
 import io.github.kotlinmania.starlarkmap.orderedmap.sortKeys
 import io.github.kotlinmania.starlarkmap.smallmap.SmallMap
-import kotlin.native.HiddenFromObjC
 
 /**
  * [OrderedMap] but with keys sorted.
  *
  */
-// generic by design: key-sorted map container; key/value params are the public contract.
-@HiddenFromObjC
 class SortedMap<K, V> internal constructor(
     private val map: OrderedMap<K, V>,
 ) : Iterable<Pair<K, V>>,
-    Serialize {
+    Serialize,
+    Allocative {
     interface Item
 
     interface IntoIter
 
     companion object {
         /** Construct an empty [SortedMap]. */
-        fun <K, V> new(): SortedMap<K, V> where K : Comparable<K> =
+        fun <K, V> new(): SortedMap<K, V> where K : Comparable<*> =
             SortedMap(OrderedMap.new())
 
-        fun <K, V> default(): SortedMap<K, V> where K : Comparable<K> = new()
+        fun <K, V> default(): SortedMap<K, V> where K : Comparable<*> = new()
 
         /**
          * Create a [SortedMap] from an iterable of key-value pairs.
          */
-        fun <K, V> fromIterator(iter: Iterable<Pair<K, V>>): SortedMap<K, V> where K : Comparable<K> {
+        fun <K, V> fromIterator(iter: Iterable<Pair<K, V>>): SortedMap<K, V> where K : Comparable<*> {
             val map = OrderedMap.fromIterator(iter)
             return from(map)
         }
 
-        fun <K, V> fromIter(iter: Iterable<Pair<K, V>>): SortedMap<K, V> where K : Comparable<K> =
+        fun <K, V> fromIter(iter: Iterable<Pair<K, V>>): SortedMap<K, V> where K : Comparable<*> =
             fromIterator(iter)
 
-        fun <K, V> from(map: OrderedMap<K, V>): SortedMap<K, V> where K : Comparable<K> {
+        fun <K, V> from(map: OrderedMap<K, V>): SortedMap<K, V> where K : Comparable<*> {
             map.sortKeys()
             return SortedMap(map)
         }
 
-        fun <K, V> from(map: SmallMap<K, V>): SortedMap<K, V> where K : Comparable<K> =
+        fun <K, V> from(map: SmallMap<K, V>): SortedMap<K, V> where K : Comparable<*> =
             from(OrderedMap.from(map))
 
         fun <K, V, D : Deserializer> deserialize(
             deserializer: D,
             keyDeserialize: Deserialize<K>,
             valueDeserialize: Deserialize<V>,
-        ): SerdeResult<SortedMap<K, V>> where K : Comparable<K> =
-            OrderedMap.deserialize(deserializer, keyDeserialize, valueDeserialize).map { SortedMap(it) }
+        ): SerdeResult<SortedMap<K, V>> where K : Comparable<*> =
+            OrderedMap.deserialize(deserializer, keyDeserialize, valueDeserialize).map { from(it) }
 
         fun <K, V> deserialize(
             keyDeserialize: Deserialize<K>,
             valueDeserialize: Deserialize<V>,
-        ): Deserialize<SortedMap<K, V>> where K : Comparable<K> =
+        ): Deserialize<SortedMap<K, V>> where K : Comparable<*> =
             object : Deserialize<SortedMap<K, V>> {
                 override fun <D : Deserializer> deserialize(deserializer: D): SerdeResult<SortedMap<K, V>> =
                     SortedMap.deserialize(deserializer, keyDeserialize, valueDeserialize)
@@ -141,6 +140,12 @@ class SortedMap<K, V> internal constructor(
 
     override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = map.serialize(serializer)
 
+    override fun visit(visitor: Visitor) {
+        val v = visitor.enterSelfSized(SortedMap::class, 32)
+        v.visitField(Key.new("map"), 32, map)
+        v.exit()
+    }
+
     override fun iterator(): Iterator<Pair<K, V>> = map.iterator()
 
     override fun equals(other: Any?): Boolean {
@@ -154,18 +159,18 @@ class SortedMap<K, V> internal constructor(
     override fun toString(): String = map.toString()
 }
 
-fun <K : Comparable<K>, V> sortedMapOf(vararg pairs: Pair<K, V>): SortedMap<K, V> =
+fun <K : Comparable<*>, V> sortedMapOf(vararg pairs: Pair<K, V>): SortedMap<K, V> =
     SortedMap.fromIter(pairs.asIterable())
 
-operator fun <K : Comparable<K>, V : Comparable<V>> SortedMap<K, V>.compareTo(other: SortedMap<K, V>): Int {
+operator fun <K : Comparable<*>, V : Comparable<*>> SortedMap<K, V>.compareTo(other: SortedMap<K, V>): Int {
     val thisIter = iter().iterator()
     val otherIter = other.iter().iterator()
     while (thisIter.hasNext() && otherIter.hasNext()) {
         val (k1, v1) = thisIter.next()
         val (k2, v2) = otherIter.next()
-        val kCmp = k1.compareTo(k2)
+        val kCmp = compareValues(k1, k2)
         if (kCmp != 0) return kCmp
-        val vCmp = v1.compareTo(v2)
+        val vCmp = compareValues(v1, v2)
         if (vCmp != 0) return vCmp
     }
     return when {

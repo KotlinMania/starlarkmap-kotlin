@@ -1,6 +1,4 @@
 // port-lint: source sorted_set.rs
-@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
-
 package io.github.kotlinmania.starlarkmap.sortedset
 
 /*
@@ -21,6 +19,9 @@ package io.github.kotlinmania.starlarkmap.sortedset
  * limitations under the License.
  */
 
+import io.github.kotlinmania.allocative.Allocative
+import io.github.kotlinmania.allocative.Visitor
+import io.github.kotlinmania.allocative.key.Key
 import io.github.kotlinmania.serde.SerdeResult
 import io.github.kotlinmania.serdecore.de.Deserialize
 import io.github.kotlinmania.serdecore.de.Deserializer
@@ -31,64 +32,62 @@ import io.github.kotlinmania.starlarkmap.orderedset.OrderedSet
 import io.github.kotlinmania.starlarkmap.orderedset.sort
 import io.github.kotlinmania.starlarkmap.smallset.SmallSet
 import io.github.kotlinmania.starlarkmap.sortedvec.SortedVec
-import kotlin.native.HiddenFromObjC
 
 /**
  * An immutable [SmallSet] with values guaranteed to be sorted.
  *
  */
-// generic by design: sorted set container; element param is the public contract.
-@HiddenFromObjC
 class SortedSet<T> internal constructor(
     private val inner: OrderedSet<T>,
 ) : Iterable<T>,
-    Serialize {
+    Serialize,
+    Allocative {
     interface Item
 
     interface IntoIter
 
     companion object {
         /** Construct an empty [SortedSet]. */
-        fun <T> new(): SortedSet<T> where T : Comparable<T> =
+        fun <T> new(): SortedSet<T> where T : Comparable<*> =
             SortedSet(OrderedSet.new())
 
         /** Construct without checking that the elements are sorted. */
         fun <T> newUnchecked(inner: OrderedSet<T>): SortedSet<T> = SortedSet(inner)
 
-        fun <T> default(): SortedSet<T> where T : Comparable<T> = new()
+        fun <T> default(): SortedSet<T> where T : Comparable<*> = new()
 
         /**
          * Create a [SortedSet] from an iterable.
          */
-        fun <T> fromIterator(iter: Iterable<T>): SortedSet<T> where T : Comparable<T> {
+        fun <T> fromIterator(iter: Iterable<T>): SortedSet<T> where T : Comparable<*> {
             val inner = OrderedSet.fromIterator(iter)
             inner.sort()
             return SortedSet(inner)
         }
 
-        fun <T> fromIter(iter: Iterable<T>): SortedSet<T> where T : Comparable<T> =
+        fun <T> fromIter(iter: Iterable<T>): SortedSet<T> where T : Comparable<*> =
             fromIterator(iter)
 
-        fun <T> from(inner: OrderedSet<T>): SortedSet<T> where T : Comparable<T> {
+        fun <T> from(inner: OrderedSet<T>): SortedSet<T> where T : Comparable<*> {
             inner.sort()
             return SortedSet(inner)
         }
 
-        fun <T> from(inner: SmallSet<T>): SortedSet<T> where T : Comparable<T> =
+        fun <T> from(inner: SmallSet<T>): SortedSet<T> where T : Comparable<*> =
             from(OrderedSet.from(inner))
 
-        fun <T> from(inner: SortedVec<T>): SortedSet<T> where T : Comparable<T> =
+        fun <T> from(inner: SortedVec<T>): SortedSet<T> where T : Comparable<*> =
             SortedSet(OrderedSet.fromIterator(inner))
 
         fun <T, D : Deserializer> deserialize(
             deserializer: D,
             elementDeserialize: Deserialize<T>,
-        ): SerdeResult<SortedSet<T>> where T : Comparable<T> =
+        ): SerdeResult<SortedSet<T>> where T : Comparable<*> =
             OrderedSet.deserialize(deserializer, elementDeserialize).map { SortedSet.from(it) }
 
         fun <T> deserialize(
             elementDeserialize: Deserialize<T>,
-        ): Deserialize<SortedSet<T>> where T : Comparable<T> =
+        ): Deserialize<SortedSet<T>> where T : Comparable<*> =
             object : Deserialize<SortedSet<T>> {
                 override fun <D : Deserializer> deserialize(deserializer: D): SerdeResult<SortedSet<T>> =
                     SortedSet.deserialize(deserializer, elementDeserialize)
@@ -127,6 +126,12 @@ class SortedSet<T> internal constructor(
 
     override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = inner.serialize(serializer)
 
+    override fun visit(visitor: Visitor) {
+        val v = visitor.enterSelfSized(SortedSet::class, 32)
+        v.visitField(Key.new("inner"), 32, inner)
+        v.exit()
+    }
+
     override fun iterator(): Iterator<T> = inner.iterator()
 
     override fun equals(other: Any?): Boolean {
@@ -140,14 +145,14 @@ class SortedSet<T> internal constructor(
     override fun toString(): String = inner.toString()
 }
 
-fun <T : Comparable<T>> sortedSetOf(vararg elements: T): SortedSet<T> =
+fun <T : Comparable<*>> sortedSetOf(vararg elements: T): SortedSet<T> =
     SortedSet.fromIter(elements.asIterable())
 
-operator fun <T : Comparable<T>> SortedSet<T>.compareTo(other: SortedSet<T>): Int {
+operator fun <T : Comparable<*>> SortedSet<T>.compareTo(other: SortedSet<T>): Int {
     val thisIter = iter().iterator()
     val otherIter = other.iter().iterator()
     while (thisIter.hasNext() && otherIter.hasNext()) {
-        val cmp = thisIter.next().compareTo(otherIter.next())
+        val cmp = compareValues(thisIter.next(), otherIter.next())
         if (cmp != 0) return cmp
     }
     return when {

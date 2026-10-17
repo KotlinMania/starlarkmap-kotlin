@@ -1,6 +1,4 @@
 // port-lint: source ordered_map.rs
-@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
-
 package io.github.kotlinmania.starlarkmap.orderedmap
 
 /*
@@ -21,6 +19,11 @@ package io.github.kotlinmania.starlarkmap.orderedmap
  * limitations under the License.
  */
 
+import io.github.kotlinmania.allocative.Allocative
+import io.github.kotlinmania.allocative.Visitor
+import io.github.kotlinmania.allocative.key.Key
+import io.github.kotlinmania.gazebo.stronghash.StrongHash
+import io.github.kotlinmania.gazebo.stronghash.StrongHasher
 import io.github.kotlinmania.serde.SerdeResult
 import io.github.kotlinmania.serdecore.de.Deserialize
 import io.github.kotlinmania.serdecore.de.Deserializer
@@ -32,7 +35,6 @@ import io.github.kotlinmania.starlarkmap.StarlarkHasher
 import io.github.kotlinmania.starlarkmap.smallmap.Entry
 import io.github.kotlinmania.starlarkmap.smallmap.SmallMap
 import io.github.kotlinmania.starlarkmap.smallmap.sortKeys
-import kotlin.native.HiddenFromObjC
 
 /**
  * Wrapper for [SmallMap] which considers map equal if iteration order is equal.
@@ -40,12 +42,12 @@ import kotlin.native.HiddenFromObjC
  * Unlike [SmallMap], two [OrderedMap]s are equal only when they contain the same
  * key-value pairs in the same iteration order.
  */
-// generic by design: insertion-ordered map container; key/value params are the public contract.
-@HiddenFromObjC
 class OrderedMap<K, V> internal constructor(
     internal val inner: SmallMap<K, V>,
 ) : Iterable<Pair<K, V>>,
-    Serialize {
+    Serialize,
+    Allocative,
+    StrongHash {
     interface Item
 
     interface IntoIter
@@ -196,15 +198,29 @@ class OrderedMap<K, V> internal constructor(
         inner.hashOrdered(state)
     }
 
-    fun strongHash(state: StarlarkHasher) {
+    override fun strongHash(state: StrongHasher) {
         state.writeU64(len().toULong())
         for ((k, v) in iter()) {
-            state.write(k.toString().encodeToByteArray())
-            state.write(v.toString().encodeToByteArray())
+            if (k is StrongHash) {
+                k.strongHash(state)
+            } else {
+                state.write(k.toString().encodeToByteArray())
+            }
+            if (v is StrongHash) {
+                v.strongHash(state)
+            } else {
+                state.write(v.toString().encodeToByteArray())
+            }
         }
     }
 
     override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = inner.serialize(serializer)
+
+    override fun visit(visitor: Visitor) {
+        val v = visitor.enterSelfSized(OrderedMap::class, 32)
+        v.visitField(Key.new("0"), 32, inner)
+        v.exit()
+    }
 
     override fun iterator(): Iterator<Pair<K, V>> = inner.iterator()
 
@@ -256,18 +272,18 @@ fun <K, V> orderedMapOf(vararg pairs: Pair<K, V>): OrderedMap<K, V> {
 /**
  * Sort the map by keys.
  */
-fun <K : Comparable<K>, V> OrderedMap<K, V>.sortKeys() {
+fun <K : Comparable<*>, V> OrderedMap<K, V>.sortKeys() {
     inner.sortKeys()
 }
 
-fun <K : Comparable<K>, V : Comparable<V>> OrderedMap<K, V>.partialCmp(other: OrderedMap<K, V>): Int? = compareTo(other)
+fun <K : Comparable<*>, V : Comparable<*>> OrderedMap<K, V>.partialCmp(other: OrderedMap<K, V>): Int? = compareTo(other)
 
-fun <K : Comparable<K>, V : Comparable<V>> OrderedMap<K, V>.cmp(other: OrderedMap<K, V>): Int = compareTo(other)
+fun <K : Comparable<*>, V : Comparable<*>> OrderedMap<K, V>.cmp(other: OrderedMap<K, V>): Int = compareTo(other)
 
 /**
  * Compare two [OrderedMap]s lexicographically by their iteration order.
  */
-operator fun <K : Comparable<K>, V : Comparable<V>> OrderedMap<K, V>.compareTo(
+operator fun <K : Comparable<*>, V : Comparable<*>> OrderedMap<K, V>.compareTo(
     other: OrderedMap<K, V>,
 ): Int {
     val thisIter = iter().iterator()
@@ -275,9 +291,9 @@ operator fun <K : Comparable<K>, V : Comparable<V>> OrderedMap<K, V>.compareTo(
     while (thisIter.hasNext() && otherIter.hasNext()) {
         val (tk, tv) = thisIter.next()
         val (ok, ov) = otherIter.next()
-        val keyCmp = tk.compareTo(ok)
+        val keyCmp = compareValues(tk, ok)
         if (keyCmp != 0) return keyCmp
-        val valCmp = tv.compareTo(ov)
+        val valCmp = compareValues(tv, ov)
         if (valCmp != 0) return valCmp
     }
     return when {

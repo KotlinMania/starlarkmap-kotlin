@@ -1,9 +1,5 @@
 // port-lint: source hasher.rs
-@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
-
 package io.github.kotlinmania.starlarkmap
-
-import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -23,6 +19,9 @@ import kotlin.native.HiddenFromObjC
  * limitations under the License.
  */
 
+import io.github.kotlinmania.gazebo.dupe.Dupe
+import io.github.kotlinmania.gazebo.stronghash.StrongHasher
+
 /**
  * A hasher used by Starlark implementation.
  *
@@ -36,7 +35,7 @@ class StarlarkHasher : Hasher {
         fun new(): StarlarkHasher = StarlarkHasher()
     }
 
-    // TODO(nga): `FxHasher64` is endian-dependent, this is not right.
+    // Note(nga): `FxHasher64` is endian-dependent, this is not right.
     private val inner: FxHasher64 = FxHasher64()
 
     /**
@@ -83,34 +82,33 @@ class StarlarkHasher : Hasher {
 /**
  * `BuildHasher` implementation which produces [StarlarkHasher].
  */
-@HiddenFromObjC
-class StarlarkHasherBuilder : BuildHasher<StarlarkHasher> {
+class StarlarkHasherBuilder :
+    BuildHasher,
+    Dupe {
     /**
      * Create a new hasher.
      */
     override fun buildHasher(): StarlarkHasher = StarlarkHasher()
 }
 
-interface Hasher {
-    fun finish(): ULong
+interface Hasher : StrongHasher {
+    override fun finish(): ULong
 
-    fun write(bytes: ByteArray)
+    override fun write(bytes: ByteArray)
 
-    fun writeU8(i: UByte)
+    override fun writeU8(i: UByte)
 
-    fun writeU16(i: UShort)
+    override fun writeU16(i: UShort)
 
-    fun writeU32(i: UInt)
+    override fun writeU32(i: UInt)
 
-    fun writeU64(i: ULong)
+    override fun writeU64(i: ULong)
 
     fun writeU128(i: U128)
 
-    fun writeUsize(i: ULong)
+    override fun writeUsize(i: ULong)
 }
 
-// generic by design: builds hashers parameterized by hasher type.
-@HiddenFromObjC
-interface BuildHasher<H : Hasher> {
-    fun buildHasher(): H
+interface BuildHasher {
+    fun buildHasher(): StarlarkHasher
 }

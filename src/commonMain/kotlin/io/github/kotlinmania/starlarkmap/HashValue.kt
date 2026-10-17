@@ -1,9 +1,5 @@
 // port-lint: source hash_value.rs
-@file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
-
 package io.github.kotlinmania.starlarkmap
-
-import kotlin.native.HiddenFromObjC
 
 /*
  * Copyright 2019 The Starlark in Rust Authors.
@@ -22,21 +18,25 @@ import kotlin.native.HiddenFromObjC
  * limitations under the License.
  */
 
+import io.github.kotlinmania.allocative.Allocative
+import io.github.kotlinmania.allocative.Visitor
+import io.github.kotlinmania.allocative.impls.std.visit
+import io.github.kotlinmania.allocative.key.Key
+import io.github.kotlinmania.gazebo.dupe.Dupe
+
 /**
  * A hash value.
  */
 @ConsistentCopyVisibility
 data class StarlarkHashValue private constructor(
     private val value: UInt,
-) {
+) : Dupe,
+    Allocative {
     companion object {
         /**
          * Create a new [StarlarkHashValue] using the [hashCode] contract for the given key.
          */
-        // Hashing accepts arbitrary keys (Rust's `Hash` bound has no Kotlin analog), so the
-        // parameter is intrinsically `Any?`. Hidden from the Swift bridge — Kotlin callers keep it.
-        @HiddenFromObjC
-        fun new(key: Any?): StarlarkHashValue {
+        fun <K> new(key: K): StarlarkHashValue {
             val hasher = StarlarkHasher()
             key.hash(hasher)
             return hasher.finishSmall()
@@ -75,16 +75,18 @@ data class StarlarkHashValue private constructor(
      * The resulting hash should be good enough to be used in hashbrown hashtable.
      */
     fun promote(): ULong = mixU32(value)
+
+    override fun visit(visitor: Visitor) {
+        val v = visitor.enterSelfSized(StarlarkHashValue::class, 4)
+        v.visitFieldWith(Key.new("0"), 4) { fieldVisitor -> value.visit(fieldVisitor) }
+        v.exit()
+    }
 }
 
 /**
  * Kotlin equivalent for hashing into [StarlarkHasher].
  */
-// SAM by design: its generated constructor takes a `(StarlarkHasher) -> Unit` closure, which the
-// Kotlin/Native Swift-export cache builder cannot lower. Hidden from the Swift bridge; Kotlin
-// implementors are unaffected.
-@HiddenFromObjC
-fun interface StarlarkHashable {
+interface StarlarkHashable {
     fun writeHash(hasher: StarlarkHasher)
 }
 
