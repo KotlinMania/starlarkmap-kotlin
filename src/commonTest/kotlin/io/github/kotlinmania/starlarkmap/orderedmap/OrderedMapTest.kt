@@ -19,6 +19,10 @@ package io.github.kotlinmania.starlarkmap.orderedmap
  * limitations under the License.
  */
 
+import io.github.kotlinmania.serdecore.de.I32Deserialize
+import io.github.kotlinmania.serdecore.de.StringDeserialize
+import io.github.kotlinmania.serdejson.fromStr
+import io.github.kotlinmania.serdejson.toStr
 import io.github.kotlinmania.starlarkmap.smallmap.SmallMap
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -203,5 +207,14 @@ class OrderedMapTest {
         val map = OrderedMap.default<String, Int>()
         assertEquals(0, map.len())
         assertEquals(true, map.isEmpty())
+    }
+
+    @Test
+    fun testSerde() {
+        val map = OrderedMap.fromIter(listOf(Pair("a", 1), Pair("b", 2)))
+        val serialized = toStr(map).getOrThrow()
+        assertEquals("""{"a":1,"b":2}""", serialized)
+        val map2 = fromStr(serialized, OrderedMap.deserialize(StringDeserialize, I32Deserialize)).getOrThrow()
+        assertEquals(map, map2)
     }
 }

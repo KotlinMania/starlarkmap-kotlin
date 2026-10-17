@@ -21,6 +21,11 @@ package io.github.kotlinmania.starlarkmap.orderedset
  * limitations under the License.
  */
 
+import io.github.kotlinmania.serde.SerdeResult
+import io.github.kotlinmania.serdecore.de.Deserialize
+import io.github.kotlinmania.serdecore.de.Deserializer
+import io.github.kotlinmania.serdecore.ser.Serialize
+import io.github.kotlinmania.serdecore.ser.Serializer
 import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
 import io.github.kotlinmania.starlarkmap.smallset.SmallSet
@@ -37,7 +42,12 @@ import kotlin.native.HiddenFromObjC
 @HiddenFromObjC
 class OrderedSet<T> internal constructor(
     internal val inner: SmallSet<T>,
-) : Iterable<T> {
+) : Iterable<T>,
+    Serialize {
+    interface Item
+
+    interface IntoIter
+
     companion object {
         /** Create a new empty set. */
         fun <T> new(): OrderedSet<T> = OrderedSet(SmallSet())
@@ -54,10 +64,26 @@ class OrderedSet<T> internal constructor(
         fun <T> fromIterator(iter: Iterable<T>): OrderedSet<T> =
             OrderedSet(SmallSet.fromIterator(iter))
 
+        fun <T> fromIter(iter: Iterable<T>): OrderedSet<T> = fromIterator(iter)
+
         /**
          * Create an [OrderedSet] from a [SmallSet].
          */
         fun <T> from(set: SmallSet<T>): OrderedSet<T> = OrderedSet(set)
+
+        fun <T, D : Deserializer> deserialize(
+            deserializer: D,
+            elementDeserialize: Deserialize<T>,
+        ): SerdeResult<OrderedSet<T>> =
+            SmallSet.deserialize(deserializer, elementDeserialize).map { OrderedSet(it) }
+
+        fun <T> deserialize(
+            elementDeserialize: Deserialize<T>,
+        ): Deserialize<OrderedSet<T>> =
+            object : Deserialize<OrderedSet<T>> {
+                override fun <D : Deserializer> deserialize(deserializer: D): SerdeResult<OrderedSet<T>> =
+                    OrderedSet.deserialize(deserializer, elementDeserialize)
+            }
     }
 
     /** Get the number of elements in the set. */
@@ -151,10 +177,11 @@ class OrderedSet<T> internal constructor(
      */
     fun reverse() = inner.reverse()
 
-    /**
-     * Extend the set with elements from an iterable.
-     */
     fun extend(iter: Iterable<T>) = inner.extend(iter)
+
+    fun intoIter(): Iterator<T> = inner.intoIter()
+
+    override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = inner.serialize(serializer)
 
     override fun iterator(): Iterator<T> = inner.iterator()
 
@@ -183,6 +210,14 @@ class OrderedSet<T> internal constructor(
     }
 
     override fun toString(): String = iter().joinToString(", ", "{", "}")
+}
+
+fun <T> orderedSetOf(vararg elements: T): OrderedSet<T> {
+    val set = OrderedSet.withCapacity<T>(elements.size)
+    for (e in elements) {
+        set.insert(e)
+    }
+    return set
 }
 
 /**

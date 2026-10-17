@@ -1,3 +1,4 @@
+// port-lint: tests vec_map/simd.rs
 @file:OptIn(kotlin.ExperimentalUnsignedTypes::class)
 
 package io.github.kotlinmania.starlarkmap.vecmap.simd

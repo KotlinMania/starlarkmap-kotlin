@@ -1,4 +1,3 @@
-// port-lint: source iter.rs
 package io.github.kotlinmania.starlarkmap
 
 /*

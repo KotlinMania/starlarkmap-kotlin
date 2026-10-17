@@ -21,8 +21,15 @@ package io.github.kotlinmania.starlarkmap.orderedmap
  * limitations under the License.
  */
 
+import io.github.kotlinmania.serde.SerdeResult
+import io.github.kotlinmania.serdecore.de.Deserialize
+import io.github.kotlinmania.serdecore.de.Deserializer
+import io.github.kotlinmania.serdecore.ser.Serialize
+import io.github.kotlinmania.serdecore.ser.Serializer
 import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
+import io.github.kotlinmania.starlarkmap.StarlarkHasher
+import io.github.kotlinmania.starlarkmap.smallmap.Entry
 import io.github.kotlinmania.starlarkmap.smallmap.SmallMap
 import io.github.kotlinmania.starlarkmap.smallmap.sortKeys
 import kotlin.native.HiddenFromObjC
@@ -37,7 +44,12 @@ import kotlin.native.HiddenFromObjC
 @HiddenFromObjC
 class OrderedMap<K, V> internal constructor(
     internal val inner: SmallMap<K, V>,
-) : Iterable<Pair<K, V>> {
+) : Iterable<Pair<K, V>>,
+    Serialize {
+    interface Item
+
+    interface IntoIter
+
     companion object {
         /** Create a new empty map. */
         fun <K, V> new(): OrderedMap<K, V> = OrderedMap(SmallMap.new())
@@ -59,10 +71,28 @@ class OrderedMap<K, V> internal constructor(
             return OrderedMap(map)
         }
 
+        fun <K, V> fromIter(iter: Iterable<Pair<K, V>>): OrderedMap<K, V> = fromIterator(iter)
+
         /**
          * Create an [OrderedMap] from a [SmallMap].
          */
         fun <K, V> from(map: SmallMap<K, V>): OrderedMap<K, V> = OrderedMap(map)
+
+        fun <K, V, D : Deserializer> deserialize(
+            deserializer: D,
+            keyDeserialize: Deserialize<K>,
+            valueDeserialize: Deserialize<V>,
+        ): SerdeResult<OrderedMap<K, V>> =
+            SmallMap.deserialize(deserializer, keyDeserialize, valueDeserialize).map { OrderedMap(it) }
+
+        fun <K, V> deserialize(
+            keyDeserialize: Deserialize<K>,
+            valueDeserialize: Deserialize<V>,
+        ): Deserialize<OrderedMap<K, V>> =
+            object : Deserialize<OrderedMap<K, V>> {
+                override fun <D : Deserializer> deserialize(deserializer: D): SerdeResult<OrderedMap<K, V>> =
+                    OrderedMap.deserialize(deserializer, keyDeserialize, valueDeserialize)
+            }
     }
 
     /** Get the number of elements in the map. */
@@ -77,11 +107,17 @@ class OrderedMap<K, V> internal constructor(
     /** Iterate over the entries with hashed keys. */
     fun iterHashed(): Sequence<Pair<Hashed<K>, V>> = inner.iterHashed()
 
+    /** Iterate over the entries, with mutable values. */
+    fun iterMut(): Sequence<Pair<K, V>> = inner.iterMut()
+
     /** Iterate over the keys. */
     fun keys(): Sequence<K> = inner.keys()
 
     /** Iterate over the values. */
     fun values(): Sequence<V> = inner.values()
+
+    /** Iterate over the values, with mutable values. */
+    fun valuesMut(): Sequence<V> = inner.valuesMut()
 
     /**
      * Get a reference to the value associated with the given key.
@@ -92,6 +128,16 @@ class OrderedMap<K, V> internal constructor(
      * Get a reference to the value associated with the given key using [Equivalent].
      */
     fun <Q> get(key: Q): V? where Q : Equivalent<K> = inner.get(key)
+
+    /**
+     * Get a mutable reference to the value associated with the given key.
+     */
+    fun getMut(key: K): V? = inner.get(key)
+
+    /**
+     * Get a mutable reference to the value associated with the given key using [Equivalent].
+     */
+    fun <Q> getMut(key: Q): V? where Q : Equivalent<K> = inner.get(key)
 
     /** Find an entry by an index. */
     fun getIndex(index: Int): Pair<K, V>? = inner.getIndex(index)
@@ -128,6 +174,9 @@ class OrderedMap<K, V> internal constructor(
     /** Clear the map. */
     fun clear() = inner.clear()
 
+    /** Get an entry by key. */
+    fun entry(key: K): Entry<K, V> = inner.entry(key)
+
     /**
      * Extend the map with entries from an iterable.
      */
@@ -136,6 +185,26 @@ class OrderedMap<K, V> internal constructor(
             inner.insert(k, v)
         }
     }
+
+    fun intoIter(): Iterator<Pair<K, V>> = inner.intoIter()
+
+    fun fmt(): String = toString()
+
+    fun eq(other: OrderedMap<K, V>): Boolean = equals(other)
+
+    fun hash(state: StarlarkHasher) {
+        inner.hashOrdered(state)
+    }
+
+    fun strongHash(state: StarlarkHasher) {
+        state.writeU64(len().toULong())
+        for ((k, v) in iter()) {
+            state.write(k.toString().encodeToByteArray())
+            state.write(v.toString().encodeToByteArray())
+        }
+    }
+
+    override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = inner.serialize(serializer)
 
     override fun iterator(): Iterator<Pair<K, V>> = inner.iterator()
 
@@ -176,12 +245,24 @@ class OrderedMap<K, V> internal constructor(
     override fun toString(): String = iter().joinToString(", ", "{", "}") { (k, v) -> "$k=$v" }
 }
 
+fun <K, V> orderedMapOf(vararg pairs: Pair<K, V>): OrderedMap<K, V> {
+    val map = OrderedMap.withCapacity<K, V>(pairs.size)
+    for ((k, v) in pairs) {
+        map.insert(k, v)
+    }
+    return map
+}
+
 /**
  * Sort the map by keys.
  */
 fun <K : Comparable<K>, V> OrderedMap<K, V>.sortKeys() {
     inner.sortKeys()
 }
+
+fun <K : Comparable<K>, V : Comparable<V>> OrderedMap<K, V>.partialCmp(other: OrderedMap<K, V>): Int? = compareTo(other)
+
+fun <K : Comparable<K>, V : Comparable<V>> OrderedMap<K, V>.cmp(other: OrderedMap<K, V>): Int = compareTo(other)
 
 /**
  * Compare two [OrderedMap]s lexicographically by their iteration order.

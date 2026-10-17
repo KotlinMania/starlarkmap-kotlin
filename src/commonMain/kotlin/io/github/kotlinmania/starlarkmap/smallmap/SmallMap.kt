@@ -20,10 +20,20 @@ package io.github.kotlinmania.starlarkmap.smallmap
  * limitations under the License.
  */
 
+import io.github.kotlinmania.serde.SerdeResult
+import io.github.kotlinmania.serde.serdeCatching
+import io.github.kotlinmania.serdecore.de.Deserialize
+import io.github.kotlinmania.serdecore.de.Deserializer
+import io.github.kotlinmania.serdecore.de.MapAccess
+import io.github.kotlinmania.serdecore.de.Visitor
+import io.github.kotlinmania.serdecore.ser.Serialize
+import io.github.kotlinmania.serdecore.ser.Serializer
 import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
 import io.github.kotlinmania.starlarkmap.StarlarkHashValue
+import io.github.kotlinmania.starlarkmap.StarlarkHasher
 import io.github.kotlinmania.starlarkmap.vecmap.VecMap
+import io.github.kotlinmania.starlarkmap.vecmap.isSortedByKey
 import kotlin.native.HiddenFromObjC
 import io.github.kotlinmania.starlarkmap.vecmap.sortKeys as vecMapSortKeys
 
@@ -64,7 +74,40 @@ class SmallMap<K, V> internal constructor(
      * collisions.
      */
     internal var index: HashMap<StarlarkHashValue, MutableList<Int>>? = null,
-) {
+) : Iterable<Pair<K, V>>,
+    Serialize {
+    interface Item
+
+    interface IntoIter
+
+    class RebuildIndexOnDrop<K, V>(
+        val map: SmallMap<K, V>,
+    ) {
+        fun drop() {
+            map.rebuildIndex()
+        }
+    }
+
+    class MapVisitor<K, V>(
+        private val keyDeserialize: Deserialize<K>,
+        private val valueDeserialize: Deserialize<V>,
+    ) : Visitor<SmallMap<K, V>> {
+        interface Value
+
+        override fun expecting(): String = "a map"
+
+        override fun <A : MapAccess> visitMap(access: A): SerdeResult<SmallMap<K, V>> =
+            serdeCatching {
+                val hint = access.sizeHint() ?: 0
+                val values = withCapacity<K, V>(hint)
+                while (true) {
+                    val entry = access.nextEntry(keyDeserialize, valueDeserialize).getOrThrow() ?: break
+                    values.insert(entry.first, entry.second)
+                }
+                values
+            }
+    }
+
     companion object {
         /**
          * Empty map.
@@ -93,7 +136,93 @@ class SmallMap<K, V> internal constructor(
         fun <K, V> fromIter(iter: Iterable<Pair<K, V>>): SmallMap<K, V> = fromIterator(iter)
 
         fun <K, V> default(): SmallMap<K, V> = new()
+
+        fun <K, V, D : Deserializer> deserialize(
+            deserializer: D,
+            keyDeserialize: Deserialize<K>,
+            valueDeserialize: Deserialize<V>,
+        ): SerdeResult<SmallMap<K, V>> =
+            deserializer.deserializeMap(MapVisitor(keyDeserialize, valueDeserialize))
+
+        fun <K, V> deserialize(
+            keyDeserialize: Deserialize<K>,
+            valueDeserialize: Deserialize<V>,
+        ): Deserialize<SmallMap<K, V>> =
+            object : Deserialize<SmallMap<K, V>> {
+                override fun <D : Deserializer> deserialize(deserializer: D): SerdeResult<SmallMap<K, V>> =
+                    SmallMap.deserialize(deserializer, keyDeserialize, valueDeserialize)
+            }
     }
+
+    fun fmt(): String = toString()
+
+    internal fun assertInvariants() {
+        val idx = index
+        if (idx != null) {
+            check(idx.size <= entries.len())
+            for (i in 0 until entries.len()) {
+                val key = entries.keyAt(i)
+                check(getIndexOf(key) == i)
+            }
+        } else {
+            check(entries.len() <= NO_INDEX_THRESHOLD)
+        }
+    }
+
+    internal fun hasher(): StarlarkHasher = StarlarkHasher.new()
+
+    fun insertUniqueUnchecked(key: K, value: V) {
+        insertHashedUniqueUnchecked(Hashed.new(key), value)
+    }
+
+    fun pagableSerialize() {}
+
+    fun pagableDeserialize() {}
+
+    fun eq(other: SmallMap<*, *>): Boolean {
+        if (len() != other.len()) return false
+        for (i in 0 until entries.len()) {
+            val key = entries.keyAt(i)
+            val value = entries.valueAt(i)
+            var found = false
+            for (j in 0 until other.entries.len()) {
+                if (other.entries.keyAt(j) == key) {
+                    if (other.entries.valueAt(j) != value) return false
+                    found = true
+                    break
+                }
+            }
+            if (!found) return false
+        }
+        return true
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is SmallMap<*, *>) return false
+        return eq(other)
+    }
+
+    override fun hashCode(): Int {
+        var h = 0
+        for (i in 0 until entries.len()) {
+            h += (entries.keyAt(i)?.hashCode() ?: 0) xor (entries.valueAt(i)?.hashCode() ?: 0)
+        }
+        return h
+    }
+
+    fun hash(): Int = hashCode()
+
+    override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> =
+        serdeCatching {
+            val map = serializer.serializeMap(entries.len()).getOrThrow()
+            for (i in 0 until entries.len()) {
+                val key = entries.keyAt(i)
+                val value = entries.valueAt(i)
+                map.serializeEntry(wrapSerialize(key), wrapSerialize(value)).getOrThrow()
+            }
+            map.end().getOrThrow()
+        }
 
     override fun toString(): String =
         (0 until entries.len()).joinToString(prefix = "{", postfix = "}", separator = ", ") { i ->
@@ -132,7 +261,7 @@ class SmallMap<K, V> internal constructor(
 
     fun iterMutUnchecked(): Sequence<Pair<K, V>> = entries.iterMutUnchecked()
 
-    operator fun iterator(): Iterator<Pair<K, V>> = iter().iterator()
+    override operator fun iterator(): Iterator<Pair<K, V>> = iter().iterator()
 
     fun intoIter(): Iterator<Pair<K, V>> = entries.intoIter()
 
@@ -429,6 +558,16 @@ class SmallMap<K, V> internal constructor(
     /** Hash entries in the iteration order. */
     fun hashOrdered(): Int = entries.hashOrdered()
 
+    /** Hash entries in the iteration order into a Hasher. */
+    fun hashOrdered(state: StarlarkHasher) {
+        for ((k, v) in entries.iterHashed()) {
+            state.writeU32(k.hash().get())
+            if (v != Unit && v != null) {
+                state.write(v.toString().encodeToByteArray())
+            }
+        }
+    }
+
     /** Reverse the iteration order of the map. */
     fun reverse() {
         entries.reverse()
@@ -517,6 +656,12 @@ class OccupiedEntry<K, V> internal constructor(
             set = { v -> map.entries.setValue(index, v) },
         )
 
+    fun intoMut(): MutableValueRef<V> = getMut()
+
+    fun intoMutEntry(): Pair<K, MutableValueRef<V>> = Pair(key(), getMut())
+
+    fun asKeyAndMutValue(): Pair<K, MutableValueRef<V>> = Pair(key(), getMut())
+
     /** Replace the value associated with the entry. */
     fun set(value: V) {
         map.entries.setValue(index, value)
@@ -537,6 +682,17 @@ class VacantEntry<K, V> internal constructor(
     fun insert(value: V): V {
         map.insertHashedUniqueUnchecked(keyHashed, value)
         return value
+    }
+
+    fun insertEntry(value: V): Pair<K, MutableValueRef<V>> {
+        map.insertHashedUniqueUnchecked(keyHashed, value)
+        val idx = map.entries.len() - 1
+        val ref =
+            MutableValueRef(
+                get = { map.entries.valueAt(idx) },
+                set = { v -> map.entries.setValue(idx, v) },
+            )
+        return Pair(key(), ref)
     }
 }
 
@@ -573,6 +729,14 @@ sealed class Entry<K, V> {
             is Vacant -> entry.insert(defaultValue())
         }
 
+    fun orDefault(defaultValue: V): V = orInsert(defaultValue)
+
+    fun orInsertEntryWith(defaultValue: () -> V): Pair<K, MutableValueRef<V>> =
+        when (this) {
+            is Occupied -> entry.intoMutEntry()
+            is Vacant -> entry.insertEntry(defaultValue())
+        }
+
     /** Modify if present. Returns this entry. */
     fun andModify(f: (V) -> V): Entry<K, V> {
         if (this is Occupied) {
@@ -583,10 +747,20 @@ sealed class Entry<K, V> {
     }
 }
 
+/** Check if entries are sorted by key. */
+fun <K : Comparable<K>, V> SmallMap<K, V>.isSortedByKey(): Boolean = entries.isSortedByKey()
+
 /** Sort entries by key. */
 fun <K : Comparable<K>, V> SmallMap<K, V>.sortKeys() {
-    entries.vecMapSortKeys()
-    rebuildIndex()
+    if (isSortedByKey()) {
+        return
+    }
+    val guard = SmallMap.RebuildIndexOnDrop(this)
+    try {
+        entries.vecMapSortKeys()
+    } finally {
+        guard.drop()
+    }
 }
 
 // generic by design: mutable value reference; value param is the public contract.
@@ -602,3 +776,99 @@ class MutableValueRef<V>(
 
     fun set(value: V) = setFn(value)
 }
+
+fun <K, V> smallMapDeserialize(
+    keyDeserialize: Deserialize<K>,
+    valueDeserialize: Deserialize<V>,
+): Deserialize<SmallMap<K, V>> =
+    object : Deserialize<SmallMap<K, V>> {
+        override fun <D : Deserializer> deserialize(deserializer: D): SerdeResult<SmallMap<K, V>> =
+            SmallMap.deserialize(deserializer, keyDeserialize, valueDeserialize)
+    }
+
+fun <K, V> smallMapOf(vararg pairs: Pair<K, V>): SmallMap<K, V> {
+    val map = SmallMap.withCapacity<K, V>(pairs.size)
+    for ((k, v) in pairs) {
+        map.insert(k, v)
+    }
+    return map
+}
+
+internal fun wrapSerialize(value: Any?): Serialize =
+    when (value) {
+        null -> {
+            object : Serialize {
+                override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = serializer.serializeNone()
+            }
+        }
+
+        is Serialize -> {
+            value
+        }
+
+        is Boolean -> {
+            object : Serialize {
+                override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = serializer.serializeBool(value)
+            }
+        }
+
+        is Byte -> {
+            object : Serialize {
+                override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = serializer.serializeI8(value)
+            }
+        }
+
+        is Short -> {
+            object : Serialize {
+                override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = serializer.serializeI16(value)
+            }
+        }
+
+        is Int -> {
+            object : Serialize {
+                override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = serializer.serializeI32(value)
+            }
+        }
+
+        is Long -> {
+            object : Serialize {
+                override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = serializer.serializeI64(value)
+            }
+        }
+
+        is Float -> {
+            object : Serialize {
+                override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = serializer.serializeF32(value)
+            }
+        }
+
+        is Double -> {
+            object : Serialize {
+                override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = serializer.serializeF64(value)
+            }
+        }
+
+        is Char -> {
+            object : Serialize {
+                override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = serializer.serializeChar(value)
+            }
+        }
+
+        is String -> {
+            object : Serialize {
+                override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = serializer.serializeStr(value)
+            }
+        }
+
+        is ByteArray -> {
+            object : Serialize {
+                override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = serializer.serializeBytes(value)
+            }
+        }
+
+        else -> {
+            object : Serialize {
+                override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = serializer.serializeStr(value.toString())
+            }
+        }
+    }

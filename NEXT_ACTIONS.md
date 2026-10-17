@@ -4,18 +4,29 @@ Based on AST analysis, here are the concrete next steps.
 
 ## Summary
 
-- **Files Present:** 23/25 (92.0%)
-- **Function parity:** 366/503 matched (target 614) — 72.8%
-- **Class/type parity:** 64/100 matched (target 86) — 64.0%
-- **Combined symbol parity:** 430/603 matched (target 700) — 71.3%
-- **Average inline-code cosine:** 0.48 (function body across 23 matched files)
-- **Average documentation cosine:** 0.58 (doc text across 23 matched files)
-- **Cheat-zeroed Files:** 1
-- **Critical Issues:** 15 files with <0.60 function similarity
+- **Files Present:** 22/25 (88.0%)
+- **Function parity:** 482/597 matched (target 727) — 80.7%
+- **Class/type parity:** 82/100 matched (target 108) — 82.0%
+- **Combined symbol parity:** 564/697 matched (target 835) — 80.9%
+- **Average inline-code cosine:** 0.25 (function body across 22 matched files)
+- **Average documentation cosine:** 0.61 (doc text across 22 matched files)
+- **Cheat-zeroed Files:** 0
+- **Critical Issues:** 21 files with <0.60 function similarity
+- **Needs Review:** 1 files with 0.60-0.84 function similarity
+- **Excellent:** 0 files with >=0.85 function similarity
 
 ## Priority 1: Fix Incomplete High-Dependency Files
 
-No incomplete high-dependency files detected.
+### 1. hashed
+- **Similarity:** 0.23 (needs 62% improvement)
+- **Dependencies:** 10
+- **Priority Score:** 10011808.0
+- **Functions:** 16/16 matched (target 20)
+- **Missing functions:** _none_
+- **Types:** 1/2 matched (target 1)
+- **Missing types:** `Target`
+- **Symbol Deficit:** 1 (functions: 0, types: 1)
+- **Action:** Deep review - likely missing major functionality
 
 ## Priority 2: Port Missing High-Value Files
 
@@ -30,10 +41,10 @@ Every matched file is listed below with function and type symbol parity.
 ### 1. hashed
 
 - **Target:** `starlarkmap.Hashed`
-- **Similarity:** 0.86
+- **Similarity:** 0.23
 - **Dependents:** 10
-- **Priority Score:** 10011701.0
-- **Functions:** 15/15 matched (target 20)
+- **Priority Score:** 10011808.0
+- **Functions:** 16/16 matched (target 20)
 - **Missing functions:** _none_
 - **Types:** 1/2 matched (target 1)
 - **Missing types:** `Target`
@@ -41,9 +52,9 @@ Every matched file is listed below with function and type symbol parity.
 ### 2. hasher
 
 - **Target:** `starlarkmap.Hasher`
-- **Similarity:** 0.77
+- **Similarity:** 0.31
 - **Dependents:** 6
-- **Priority Score:** 6001402.5
+- **Priority Score:** 6001407.0
 - **Functions:** 11/11 matched
 - **Missing functions:** _none_
 - **Types:** 3/3 matched (target 4)
@@ -53,241 +64,230 @@ Every matched file is listed below with function and type symbol parity.
 ### 3. small_map
 
 - **Target:** `smallmap.SmallMap`
-- **Similarity:** 0.49
+- **Similarity:** 0.19
 - **Dependents:** 4
-- **Priority Score:** 4312005.0
-- **Functions:** 84/109 matched (target 111)
-- **Missing functions:** `fmt`, `assert_invariants`, `hasher`, `insert_unique_unchecked`, `state_check`, `is_sorted_by_key`, `drop`, `into_mut`, `into_mut_entry`, `as_key_and_mut_value`, `insert_entry`, `or_default`, `or_insert_entry_with`, `eq`, `pagable_serialize`, `pagable_deserialize`, `serialize`, `deserialize`, `expecting`, `visit_map`, `hash`, `partial_cmp`, `cmp`, `test_json`, `test_retain`
-- **Types:** 6/11 matched
-- **Missing types:** `RebuildIndexOnDrop`, `Item`, `IntoIter`, `MapVisitor`, `Value`
-- **Tests:** 21/28 matched
-
-### 4. iter
-
-- **Target:** `starlarkmap.Iter [ZERO]`
-- **Similarity:** 0.00
-- **Dependents:** 4
-- **Priority Score:** 4000010.0
-- **Functions:** 0/0 matched (target 7)
-- **Missing functions:** _none_
-- **Types:** 0/0 matched (target 2)
+- **Priority Score:** 4113108.2
+- **Functions:** 110/120 matched (target 156)
+- **Missing functions:** `assert_invariants`, `state_check`, `drop`, `from_iter`, `into_iter`, `into_iter`, `into_iter`, `hash`, `partial_cmp`, `cmp`
+- **Types:** 11/11 matched (target 17)
 - **Missing types:** _none_
+- **Tests:** 24/29 matched
 
-### 5. vec2
+### 4. vec2
 
 - **Target:** `vec2.Vec2`
-- **Similarity:** 0.24
+- **Similarity:** 0.08
 - **Dependents:** 3
-- **Priority Score:** 3427307.8
-- **Functions:** 30/63 matched (target 38)
-- **Missing functions:** `new_checked`, `alloc`, `dealloc`, `pagable_serialize`, `pagable_deserialize`, `serialize`, `deserialize`, `expecting`, `visit_seq`, `default`, `fmt`, `clone`, `aaa_ptr`, `bbb_ptr`, `aaa`, `aaa_mut`, `aaa_uninit`, `bbb`, `bbb_mut`, `bbb_uninit`, `reserve_slow`, `dealloc_impl`, `drop_in_place`, `get_mut`, `get_unchecked_mut`, `read`, `drop`, `eq`, `hash`, `visit`, `test_layout_for`, `test_alloc_dealloc`, `test_alignment`
+- **Priority Score:** 3477809.2
+- **Functions:** 30/68 matched (target 38)
+- **Missing functions:** `new_checked`, `alloc`, `dealloc`, `pagable_serialize`, `pagable_deserialize`, `serialize`, `deserialize`, `expecting`, `visit_seq`, `default`, `fmt`, `clone`, `new`, `aaa_ptr`, `bbb_ptr`, `aaa`, `aaa_mut`, `aaa_uninit`, `bbb`, `bbb_mut`, `bbb_uninit`, `reserve_slow`, `dealloc_impl`, `dealloc`, `drop_in_place`, `get_mut`, `get_unchecked_mut`, `read`, `drop`, `drop`, `drop`, `into_iter`, `eq`, `hash`, `visit`, `test_layout_for`, `test_alloc_dealloc`, `test_alignment`
 - **Types:** 1/10 matched (target 2)
 - **Missing types:** `Vec2Layout`, `Vec2Visitor`, `Value`, `DropInPlace`, `Retain`, `Item`, `IntoIter`, `Align16`, `Align8`
 - **Tests:** 9/12 matched
 - **Lint issues:** 1
 
-### 6. small_set
+### 5. small_set
 
 - **Target:** `smallset.SmallSet`
-- **Similarity:** 0.43
+- **Similarity:** 0.17
 - **Dependents:** 2
-- **Priority Score:** 2197205.8
-- **Functions:** 50/65 matched (target 72)
-- **Missing functions:** `default`, `fmt`, `eq`, `from_iter`, `iter_mut_unchecked`, `get_index_of_hashed`, `get_index_of_hashed_by_value`, `hash_ordered`, `retain`, `into_iter`, `serialize`, `deserialize`, `expecting`, `visit_seq`, `test_json`
-- **Types:** 3/7 matched (target 6)
-- **Missing types:** `Item`, `IntoIter`, `SeqVisitor`, `Value`
-- **Tests:** 12/13 matched
+- **Priority Score:** 2037708.2
+- **Functions:** 68/70 matched (target 90)
+- **Missing functions:** `into_iter`, `size_hint`
+- **Types:** 6/7 matched (target 9)
+- **Missing types:** `Value`
+- **Tests:** 15/15 matched
 
-### 7. vec_map
+### 6. vec_map
 
 - **Target:** `vecmap.VecMap`
-- **Similarity:** 0.64
+- **Similarity:** 0.19
 - **Dependents:** 2
-- **Priority Score:** 2003303.6
+- **Priority Score:** 2003308.0
 - **Functions:** 32/32 matched (target 36)
 - **Missing functions:** _none_
 - **Types:** 1/1 matched
 - **Missing types:** _none_
 
-### 8. ordered_map
-
-- **Target:** `orderedmap.OrderedMap`
-- **Similarity:** 0.35
-- **Dependents:** 1
-- **Priority Score:** 1163806.5
-- **Functions:** 20/34 matched (target 44)
-- **Missing functions:** `iter_mut`, `values_mut`, `get_mut`, `entry`, `eq`, `hash`, `strong_hash`, `partial_cmp`, `cmp`, `from_iter`, `into_iter`, `serialize`, `deserialize`, `test_serde`
-- **Types:** 2/4 matched (target 3)
-- **Missing types:** `Item`, `IntoIter`
-- **Tests:** 1/2 matched
-
-### 9. unordered_map
+### 7. unordered_map
 
 - **Target:** `unorderedmap.UnorderedMap`
-- **Similarity:** 0.31
+- **Similarity:** 0.09
 - **Dependents:** 1
-- **Priority Score:** 1145306.9
-- **Functions:** 31/44 matched (target 49)
-- **Missing functions:** `get_hashed`, `get_mut`, `entries_unordered_mut`, `values_unordered_mut`, `into_entries_unordered`, `index`, `fmt`, `eq`, `hash`, `from_iter`, `pagable_serialize`, `pagable_deserialize`, `key_mut`
+- **Priority Score:** 1176309.0
+- **Functions:** 38/54 matched (target 49)
+- **Missing functions:** `get_hashed`, `get_mut`, `entries_unordered_mut`, `values_unordered_mut`, `into_entries_unordered`, `index`, `fmt`, `eq`, `hash`, `from_iter`, `pagable_serialize`, `pagable_deserialize`, `get_mut`, `get_mut`, `key_mut`, `hash`
 - **Types:** 8/9 matched (target 11)
 - **Missing types:** `Output`
-- **Tests:** 5/5 matched
+- **Tests:** 5/6 matched
 
-### 10. ordered_set
+### 8. ordered_set
 
 - **Target:** `orderedset.OrderedSet`
-- **Similarity:** 0.57
+- **Similarity:** 0.21
 - **Dependents:** 1
-- **Priority Score:** 1093604.2
-- **Functions:** 24/30 matched (target 39)
-- **Missing functions:** `eq`, `partial_cmp`, `cmp`, `hash`, `into_iter`, `from_iter`
-- **Types:** 3/6 matched (target 5)
-- **Missing types:** `Iter`, `IntoIter`, `Item`
-- **Tests:** 2/2 matched
+- **Priority Score:** 1083907.9
+- **Functions:** 26/33 matched (target 45)
+- **Missing functions:** `eq`, `partial_cmp`, `cmp`, `hash`, `into_iter`, `eq`, `hash`
+- **Types:** 5/6 matched (target 7)
+- **Missing types:** `Iter`
+- **Tests:** 2/4 matched
 
-### 11. sorted_vec
+### 9. ordered_map
+
+- **Target:** `orderedmap.OrderedMap`
+- **Similarity:** 0.21
+- **Dependents:** 1
+- **Priority Score:** 1044207.9
+- **Functions:** 34/38 matched (target 63)
+- **Missing functions:** `into_iter`, `into_iter`, `eq`, `hash`
+- **Types:** 4/4 matched (target 5)
+- **Missing types:** _none_
+- **Tests:** 2/4 matched
+
+### 10. sorted_vec
 
 - **Target:** `sortedvec.SortedVec`
-- **Similarity:** 0.62
+- **Similarity:** 0.20
 - **Dependents:** 1
-- **Priority Score:** 1031003.8
-- **Functions:** 6/7 matched (target 12)
-- **Missing functions:** `test_new_unchecked`
-- **Types:** 1/3 matched (target 1)
-- **Missing types:** `Item`, `IntoIter`
-- **Tests:** 0/1 matched
+- **Priority Score:** 1001008.0
+- **Functions:** 7/7 matched (target 13)
+- **Missing functions:** _none_
+- **Types:** 3/3 matched (target 4)
+- **Missing types:** _none_
+- **Tests:** 1/1 matched
 
-### 12. mix_u32
+### 11. mix_u32
 
 - **Target:** `starlarkmap.MixU32`
-- **Similarity:** 0.28
+- **Similarity:** 0.51
 - **Dependents:** 1
-- **Priority Score:** 1000107.2
+- **Priority Score:** 1000104.9
 - **Functions:** 1/1 matched
 - **Missing functions:** _none_
 - **Types:** 0/0 matched
 - **Missing types:** _none_
 
-### 13. small_map.iter
+### 12. small_map.iter
 
 - **Target:** `commonMain.kotlin.io.github.kotlinmania.starlarkmap.smallmap.iter.Iter`
-- **Similarity:** 0.24
+- **Similarity:** 0.08
 - **Dependents:** 0
-- **Priority Score:** 122407.6
-- **Functions:** 1/12 matched (target 30)
-- **Missing functions:** `map`, `_assert_iterators_sync_send`, `assert_sync_send`, `test_iter_hashed`, `test_iter`, `test_into_iter_hashed`, `test_into_iter`, `test_keys`, `test_values`, `test_into_keys`, `test_into_values`
+- **Priority Score:** 254409.2
+- **Functions:** 8/32 matched (target 30)
+- **Missing functions:** `map`, `map`, `map`, `map`, `map`, `map`, `map`, `map`, `map`, `len`, `map`, `len`, `map`, `len`, `_assert_iterators_sync_send`, `assert_sync_send`, `test_iter_hashed`, `test_iter`, `test_into_iter_hashed`, `test_into_iter`, `test_keys`, `test_values`, `test_into_keys`, `test_into_values`
 - **Types:** 11/12 matched (target 11)
 - **Missing types:** `Item`
 
-### 14. sorted_map
-
-- **Target:** `sortedmap.SortedMap`
-- **Similarity:** 0.39
-- **Dependents:** 0
-- **Priority Score:** 92306.1
-- **Functions:** 13/20 matched (target 21)
-- **Missing functions:** `iter_mut`, `values_mut`, `get_mut`, `from_iter`, `into_iter`, `serialize`, `deserialize`
-- **Types:** 1/3 matched (target 2)
-- **Missing types:** `Item`, `IntoIter`
-- **Tests:** 2/2 matched
-
-### 15. sorted_set
-
-- **Target:** `sortedset.SortedSet`
-- **Similarity:** 0.73
-- **Dependents:** 0
-- **Priority Score:** 41602.7
-- **Functions:** 11/13 matched (target 20)
-- **Missing functions:** `from_iter`, `into_iter`
-- **Types:** 1/3 matched (target 1)
-- **Missing types:** `Item`, `IntoIter`
-
-### 16. sorting.insertion
-
-- **Target:** `insertion.Insertion`
-- **Similarity:** 0.37
-- **Dependents:** 0
-- **Priority Score:** 40706.3
-- **Functions:** 3/7 matched (target 3)
-- **Missing functions:** `test_find_insertion_point`, `find_insertion_point_ints`, `test_insertion_sort`, `insertion_sort_ints`
-- **Types:** 0/0 matched
-- **Missing types:** _none_
-- **Tests:** 0/4 matched
-
-### 17. small_set.iter
+### 13. small_set.iter
 
 - **Target:** `commonMain.kotlin.io.github.kotlinmania.starlarkmap.smallset.iter.Iter`
-- **Similarity:** 0.44
+- **Similarity:** 0.14
 - **Dependents:** 0
-- **Priority Score:** 30905.6
-- **Functions:** 1/3 matched (target 15)
-- **Missing functions:** `clone`, `map`
+- **Priority Score:** 71708.6
+- **Functions:** 5/11 matched (target 15)
+- **Missing functions:** `clone`, `map`, `map`, `map`, `map`, `map`
 - **Types:** 5/6 matched (target 5)
 - **Missing types:** `Item`
 
-### 18. unordered_set
+### 14. unordered_set
 
 - **Target:** `unorderedset.UnorderedSet`
-- **Similarity:** 0.65
+- **Similarity:** 0.27
 - **Dependents:** 0
-- **Priority Score:** 22603.4
-- **Functions:** 19/21 matched (target 26)
+- **Priority Score:** 22807.3
+- **Functions:** 21/23 matched (target 26)
 - **Missing functions:** `eq`, `from_iter`
 - **Types:** 5/5 matched (target 8)
 - **Missing types:** _none_
 - **Tests:** 2/2 matched
 
-### 19. vec2.iter
+### 15. sorted_map
+
+- **Target:** `sortedmap.SortedMap`
+- **Similarity:** 0.29
+- **Dependents:** 0
+- **Priority Score:** 22607.1
+- **Functions:** 21/23 matched (target 35)
+- **Missing functions:** `into_iter`, `into_iter`
+- **Types:** 3/3 matched (target 4)
+- **Missing types:** _none_
+- **Tests:** 2/2 matched
+
+### 16. vec2.iter
 
 - **Target:** `iter.Iter`
-- **Similarity:** 0.27
+- **Similarity:** 0.05
 - **Dependents:** 0
-- **Priority Score:** 20807.3
-- **Functions:** 4/5 matched (target 10)
+- **Priority Score:** 21209.5
+- **Functions:** 8/9 matched (target 10)
 - **Missing functions:** `drop`
 - **Types:** 2/3 matched (target 2)
 - **Missing types:** `Item`
 
-### 20. vec_map.simd
+### 17. sorting.insertion
 
-- **Target:** `simd.Simd`
-- **Similarity:** 0.49
+- **Target:** `insertion.Insertion`
+- **Similarity:** 0.43
 - **Dependents:** 0
-- **Priority Score:** 20405.1
-- **Functions:** 2/3 matched
-- **Missing functions:** `test_find_hash_in_array`
-- **Types:** 0/1 matched (target 0)
-- **Missing types:** `T`
-- **Tests:** 0/1 matched
+- **Priority Score:** 20705.7
+- **Functions:** 5/7 matched
+- **Missing functions:** `find_insertion_point_ints`, `insertion_sort_ints`
+- **Types:** 0/0 matched (target 1)
+- **Missing types:** _none_
+- **Tests:** 2/4 matched
 
-### 21. vec_map.iter
+### 18. vec_map.iter
 
 - **Target:** `commonMain.kotlin.io.github.kotlinmania.starlarkmap.vecmap.iter.Iter`
-- **Similarity:** 0.36
+- **Similarity:** 0.07
 - **Dependents:** 0
-- **Priority Score:** 11206.4
-- **Functions:** 2/2 matched (target 39)
+- **Priority Score:** 12709.3
+- **Functions:** 17/17 matched (target 39)
 - **Missing functions:** _none_
 - **Types:** 9/10 matched (target 9)
 - **Missing types:** `Item`
 
-### 22. hash_value
+### 19. sorted_set
 
-- **Target:** `starlarkmap.HashValue`
-- **Similarity:** 0.66
+- **Target:** `sortedset.SortedSet`
+- **Similarity:** 0.38
 - **Dependents:** 0
-- **Priority Score:** 603.4
-- **Functions:** 5/5 matched (target 6)
-- **Missing functions:** _none_
-- **Types:** 1/1 matched
+- **Priority Score:** 11906.2
+- **Functions:** 15/16 matched (target 32)
+- **Missing functions:** `into_iter`
+- **Types:** 3/3 matched (target 4)
 - **Missing types:** _none_
 
-### 23. vec_map.hint
+### 20. vec_map.simd
+
+- **Target:** `simd.Simd`
+- **Similarity:** 0.34
+- **Dependents:** 0
+- **Priority Score:** 10406.6
+- **Functions:** 3/3 matched (target 4)
+- **Missing functions:** _none_
+- **Types:** 0/1 matched
+- **Missing types:** `T`
+- **Tests:** 1/1 matched
+
+### 21. hash_value
+
+- **Target:** `starlarkmap.HashValue`
+- **Similarity:** 0.34
+- **Dependents:** 0
+- **Priority Score:** 606.6
+- **Functions:** 5/5 matched (target 6)
+- **Missing functions:** _none_
+- **Types:** 1/1 matched (target 2)
+- **Missing types:** _none_
+
+### 22. vec_map.hint
 
 - **Target:** `hint.Hint`
-- **Similarity:** 0.95
+- **Similarity:** 0.72
 - **Dependents:** 0
-- **Priority Score:** 100.5
+- **Priority Score:** 102.8
 - **Functions:** 1/1 matched
 - **Missing functions:** _none_
 - **Types:** 0/0 matched
@@ -313,5 +313,6 @@ do not treat them as the next implementation target by default.
 
 | Source | Expected target | Deps | Source path | Expected path |
 |--------|-----------------|------|-------------|---------------|
+| `iter` | `Iter` | 4 | `iter.rs` | `Iter.kt` |
 | `lib` | `Lib` | 0 | `lib.rs` | `Lib.kt` |
 
