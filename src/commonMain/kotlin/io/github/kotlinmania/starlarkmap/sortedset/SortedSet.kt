@@ -21,6 +21,11 @@ package io.github.kotlinmania.starlarkmap.sortedset
  * limitations under the License.
  */
 
+import io.github.kotlinmania.serde.SerdeResult
+import io.github.kotlinmania.serdecore.de.Deserialize
+import io.github.kotlinmania.serdecore.de.Deserializer
+import io.github.kotlinmania.serdecore.ser.Serialize
+import io.github.kotlinmania.serdecore.ser.Serializer
 import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.orderedset.OrderedSet
 import io.github.kotlinmania.starlarkmap.orderedset.sort
@@ -36,7 +41,12 @@ import kotlin.native.HiddenFromObjC
 @HiddenFromObjC
 class SortedSet<T> internal constructor(
     private val inner: OrderedSet<T>,
-) : Iterable<T> {
+) : Iterable<T>,
+    Serialize {
+    interface Item
+
+    interface IntoIter
+
     companion object {
         /** Construct an empty [SortedSet]. */
         fun <T> new(): SortedSet<T> where T : Comparable<T> =
@@ -56,6 +66,9 @@ class SortedSet<T> internal constructor(
             return SortedSet(inner)
         }
 
+        fun <T> fromIter(iter: Iterable<T>): SortedSet<T> where T : Comparable<T> =
+            fromIterator(iter)
+
         fun <T> from(inner: OrderedSet<T>): SortedSet<T> where T : Comparable<T> {
             inner.sort()
             return SortedSet(inner)
@@ -66,6 +79,20 @@ class SortedSet<T> internal constructor(
 
         fun <T> from(inner: SortedVec<T>): SortedSet<T> where T : Comparable<T> =
             SortedSet(OrderedSet.fromIterator(inner))
+
+        fun <T, D : Deserializer> deserialize(
+            deserializer: D,
+            elementDeserialize: Deserialize<T>,
+        ): SerdeResult<SortedSet<T>> where T : Comparable<T> =
+            OrderedSet.deserialize(deserializer, elementDeserialize).map { SortedSet.from(it) }
+
+        fun <T> deserialize(
+            elementDeserialize: Deserialize<T>,
+        ): Deserialize<SortedSet<T>> where T : Comparable<T> =
+            object : Deserialize<SortedSet<T>> {
+                override fun <D : Deserializer> deserialize(deserializer: D): SerdeResult<SortedSet<T>> =
+                    SortedSet.deserialize(deserializer, elementDeserialize)
+            }
     }
 
     /** Return the number of elements in the set. */
@@ -96,6 +123,10 @@ class SortedSet<T> internal constructor(
     fun union(other: SortedSet<T>): Iterator<T> =
         inner.union(other.inner)
 
+    fun intoIter(): Iterator<T> = inner.intoIter()
+
+    override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> = inner.serialize(serializer)
+
     override fun iterator(): Iterator<T> = inner.iterator()
 
     override fun equals(other: Any?): Boolean {
@@ -107,4 +138,21 @@ class SortedSet<T> internal constructor(
     override fun hashCode(): Int = inner.hashCode()
 
     override fun toString(): String = inner.toString()
+}
+
+fun <T : Comparable<T>> sortedSetOf(vararg elements: T): SortedSet<T> =
+    SortedSet.fromIter(elements.asIterable())
+
+operator fun <T : Comparable<T>> SortedSet<T>.compareTo(other: SortedSet<T>): Int {
+    val thisIter = iter().iterator()
+    val otherIter = other.iter().iterator()
+    while (thisIter.hasNext() && otherIter.hasNext()) {
+        val cmp = thisIter.next().compareTo(otherIter.next())
+        if (cmp != 0) return cmp
+    }
+    return when {
+        thisIter.hasNext() -> 1
+        otherIter.hasNext() -> -1
+        else -> 0
+    }
 }

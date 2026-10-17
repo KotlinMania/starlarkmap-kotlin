@@ -21,11 +21,21 @@ package io.github.kotlinmania.starlarkmap.smallset
  * limitations under the License.
  */
 
+import io.github.kotlinmania.serde.SerdeResult
+import io.github.kotlinmania.serde.serdeCatching
+import io.github.kotlinmania.serdecore.de.Deserialize
+import io.github.kotlinmania.serdecore.de.Deserializer
+import io.github.kotlinmania.serdecore.de.SeqAccess
+import io.github.kotlinmania.serdecore.de.Visitor
+import io.github.kotlinmania.serdecore.ser.Serialize
+import io.github.kotlinmania.serdecore.ser.Serializer
 import io.github.kotlinmania.starlarkmap.Equivalent
 import io.github.kotlinmania.starlarkmap.Hashed
+import io.github.kotlinmania.starlarkmap.StarlarkHasher
 import io.github.kotlinmania.starlarkmap.smallmap.Entry
 import io.github.kotlinmania.starlarkmap.smallmap.SmallMap
 import io.github.kotlinmania.starlarkmap.smallmap.sortKeys
+import io.github.kotlinmania.starlarkmap.smallmap.wrapSerialize
 import kotlin.native.HiddenFromObjC
 
 /**
@@ -37,11 +47,35 @@ import kotlin.native.HiddenFromObjC
 @HiddenFromObjC
 class SmallSet<T> internal constructor(
     internal val inner: SmallMap<T, Unit>,
-) {
+) : Iterable<T>,
+    Serialize {
+    interface Item
+
+    interface IntoIter
+
+    class SeqVisitor<T>(
+        private val elementDeserialize: Deserialize<T>,
+    ) : Visitor<SmallSet<T>> {
+        override fun expecting(): String = "a sequence"
+
+        override fun <A : SeqAccess> visitSeq(access: A): SerdeResult<SmallSet<T>> =
+            serdeCatching {
+                val hint = access.sizeHint() ?: 0
+                val values = withCapacity<T>(hint)
+                while (true) {
+                    val element = access.nextElement(elementDeserialize).getOrThrow() ?: break
+                    values.insert(element)
+                }
+                values
+            }
+    }
+
     constructor() : this(SmallMap.new())
 
     companion object {
         fun <T> new(): SmallSet<T> = SmallSet(SmallMap.new())
+
+        fun <T> default(): SmallSet<T> = new()
 
         fun <T> withCapacity(n: Int): SmallSet<T> = SmallSet(SmallMap.withCapacity(n))
 
@@ -52,6 +86,22 @@ class SmallSet<T> internal constructor(
             }
             return set
         }
+
+        fun <T> fromIter(iter: Iterable<T>): SmallSet<T> = fromIterator(iter)
+
+        fun <T, D : Deserializer> deserialize(
+            deserializer: D,
+            elementDeserialize: Deserialize<T>,
+        ): SerdeResult<SmallSet<T>> =
+            deserializer.deserializeSeq(SeqVisitor(elementDeserialize))
+
+        fun <T> deserialize(
+            elementDeserialize: Deserialize<T>,
+        ): Deserialize<SmallSet<T>> =
+            object : Deserialize<SmallSet<T>> {
+                override fun <D : Deserializer> deserialize(deserializer: D): SerdeResult<SmallSet<T>> =
+                    SmallSet.deserialize(deserializer, elementDeserialize)
+            }
     }
 
     fun isEmpty(): Boolean = inner.isEmpty()
@@ -82,6 +132,12 @@ class SmallSet<T> internal constructor(
 
     /** Get the index of an element using [Equivalent]. */
     fun <Q> getIndexOf(value: Q): Int? where Q : Equivalent<T> = inner.getIndexOf(value)
+
+    /** Get the index of an element by precomputed hash using [Equivalent]. */
+    fun <Q> getIndexOfHashed(value: Hashed<Q>): Int? where Q : Equivalent<T> = inner.getIndexOfHashed(value)
+
+    /** Get the index of an element by its precomputed hash. */
+    fun getIndexOfHashedByValue(value: Hashed<T>): Int? = inner.getIndexOfHashedByValue(value)
 
     /** Return a reference to the value stored in the set, if it is present. */
     fun get(value: T): T? {
@@ -237,7 +293,36 @@ class SmallSet<T> internal constructor(
         }
     }
 
-    operator fun iterator(): Iterator<T> = iter().iterator()
+    override operator fun iterator(): Iterator<T> = iter().iterator()
+
+    fun intoIter(): Iterator<T> = iterator()
+
+    fun iterMutUnchecked(): Sequence<T> = iter()
+
+    fun fmt(): String = toString()
+
+    fun eq(other: SmallSet<T>): Boolean = equals(other)
+
+    /** Hash entries in iteration order. */
+    fun hashOrdered(state: StarlarkHasher) {
+        for (h in iterHashed()) {
+            state.writeU32(h.hash().get())
+        }
+    }
+
+    /** Retains only the elements specified by the predicate. */
+    fun retain(f: (T) -> Boolean) {
+        inner.retain { k, _ -> f(k) }
+    }
+
+    override fun <Ok> serialize(serializer: Serializer<Ok>): SerdeResult<Ok> =
+        serdeCatching {
+            val seq = serializer.serializeSeq(len()).getOrThrow()
+            for (item in iter()) {
+                seq.serializeElement(wrapSerialize(item)).getOrThrow()
+            }
+            seq.end().getOrThrow()
+        }
 
     /**
      * Two sets are equal if they contain the same elements regardless of iteration order,
@@ -267,6 +352,14 @@ class SmallSet<T> internal constructor(
 
     override fun toString(): String =
         iter().joinToString(prefix = "{", postfix = "}", separator = ", ") { it.toString() }
+}
+
+fun <T> smallSetOf(vararg elements: T): SmallSet<T> {
+    val set = SmallSet.withCapacity<T>(elements.size)
+    for (e in elements) {
+        set.insert(e)
+    }
+    return set
 }
 
 /** Iterator over the difference of two sets. */

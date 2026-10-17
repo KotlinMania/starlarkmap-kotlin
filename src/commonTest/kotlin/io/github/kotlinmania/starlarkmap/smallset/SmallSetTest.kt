@@ -19,6 +19,10 @@ package io.github.kotlinmania.starlarkmap.smallset
  * limitations under the License.
  */
 
+import io.github.kotlinmania.serdecore.de.StringDeserialize
+import io.github.kotlinmania.serdejson.Value
+import io.github.kotlinmania.serdejson.fromStr
+import io.github.kotlinmania.serdejson.toStr
 import io.github.kotlinmania.starlarkmap.Equivalent
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -187,6 +191,21 @@ class SmallSetTest {
         assertEquals(3, iter.next())
         assertEquals(Pair(0, 0), iter.sizeHint())
         assertFalse(iter.hasNext())
+    }
+
+    @Test
+    fun testJson() {
+        val mp = smallSetOf("a", "b")
+        val expected = Value.Array(listOf(Value.Str("a"), Value.Str("b")))
+        val jsonStr = toStr(mp).getOrThrow()
+        val value = fromStr(jsonStr).getOrThrow()
+        assertEquals(expected, value)
+        val deserialized =
+            fromStr(
+                jsonStr,
+                SmallSet.deserialize(StringDeserialize),
+            ).getOrThrow()
+        assertEquals(mp, deserialized)
     }
 }
 

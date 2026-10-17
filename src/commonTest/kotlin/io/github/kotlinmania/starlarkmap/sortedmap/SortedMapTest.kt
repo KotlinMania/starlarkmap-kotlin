@@ -19,8 +19,13 @@ package io.github.kotlinmania.starlarkmap.sortedmap
  * limitations under the License.
  */
 
+import io.github.kotlinmania.serdecore.de.I32Deserialize
+import io.github.kotlinmania.serdecore.de.StringDeserialize
+import io.github.kotlinmania.serdejson.fromStr
+import io.github.kotlinmania.serdejson.toStr
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class SortedMapTest {
     @Test
@@ -61,5 +66,23 @@ class SortedMapTest {
         val keys2 = map.keys().toMutableList()
         keys2.sort()
         assertEquals(map.keys().toList(), keys2)
+    }
+
+    @Test
+    fun testSerde() {
+        val map = sortedMapOf(Pair("b", 2), Pair("a", 1))
+        val serialized = toStr(map).getOrThrow()
+        assertEquals("""{"a":1,"b":2}""", serialized)
+        val deserialized = fromStr(serialized, SortedMap.deserialize(StringDeserialize, I32Deserialize)).getOrThrow()
+        assertEquals(map, deserialized)
+    }
+
+    @Test
+    fun testCompareTo() {
+        val map1 = sortedMapOf(Pair("a", 1), Pair("b", 2))
+        val map2 = sortedMapOf(Pair("a", 1), Pair("b", 2))
+        val map3 = sortedMapOf(Pair("a", 1), Pair("b", 3))
+        assertEquals(0, map1.compareTo(map2))
+        assertTrue(map1.compareTo(map3) < 0)
     }
 }

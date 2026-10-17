@@ -1,4 +1,3 @@
-// port-lint: source strong_hash (external crate)
 @file:OptIn(kotlin.experimental.ExperimentalObjCRefinement::class)
 
 package io.github.kotlinmania.starlarkmap

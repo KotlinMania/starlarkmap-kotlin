@@ -19,6 +19,13 @@ package io.github.kotlinmania.starlarkmap.smallmap
  * limitations under the License.
  */
 
+import io.github.kotlinmania.serdecore.de.I32Deserialize
+import io.github.kotlinmania.serdecore.de.StringDeserialize
+import io.github.kotlinmania.serdejson.JsonMap
+import io.github.kotlinmania.serdejson.JsonNumber
+import io.github.kotlinmania.serdejson.Value
+import io.github.kotlinmania.serdejson.fromStr
+import io.github.kotlinmania.serdejson.toStr
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
@@ -262,6 +269,10 @@ class SmallMapTest {
         data class Key(
             val n: UInt,
         ) : Comparable<Key> {
+            fun partialCmp(other: Key): Int? = cmp(other)
+
+            fun cmp(other: Key): Int = compareTo(other)
+
             override fun compareTo(other: Key): Int {
                 if (n < 10u && other.n < 10u) {
                     error("panic in compareTo")
@@ -366,5 +377,43 @@ class SmallMapTest {
                 .orInsert(0)
         assertEquals(210, value3)
         assertEquals(210, map.get("key3"))
+    }
+
+    @Test
+    fun testJson() {
+        val mp = smallMapOf("a" to 1, "b" to 2)
+        val expectedMap = JsonMap()
+        expectedMap.insert("a", Value.Number(JsonNumber.fromI32(1)))
+        expectedMap.insert("b", Value.Number(JsonNumber.fromI32(2)))
+        val expected = Value.Object(expectedMap)
+
+        val jsonStr = toStr(mp).getOrThrow()
+        val value = fromStr(jsonStr).getOrThrow()
+        assertEquals(expected, value)
+        val deserialized =
+            fromStr(
+                jsonStr,
+                SmallMap.deserialize(StringDeserialize, I32Deserialize),
+            ).getOrThrow()
+        assertEquals(mp, deserialized)
+    }
+
+    @Test
+    fun testRetain() {
+        class MutableInt(
+            var value: Int,
+        )
+        val map = SmallMap.new<String, MutableInt>()
+        for (i in 0 until 100) {
+            map.insert(i.toString(), MutableInt(i))
+        }
+        map.retain { _, v ->
+            val res = v.value % 2 == 0
+            v.value += 3
+            res
+        }
+        assertEquals(50, map.len())
+        assertNull(map.get("7"))
+        assertEquals(11, map.get("8")?.value)
     }
 }
